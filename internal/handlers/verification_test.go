@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -39,6 +40,11 @@ func TestVerificationHandler_HandleVerification(t *testing.T) {
 	httpReq := httptest.NewRequest("POST", "/api/v1/verify", bytes.NewBuffer(reqBody))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer test-token")
+
+	// Add validated request to context (simulating validation middleware)
+	ctx := httpReq.Context()
+	ctx = context.WithValue(ctx, "validated_request", &req)
+	httpReq = httpReq.WithContext(ctx)
 
 	// Create response recorder
 	w := httptest.NewRecorder()
@@ -92,6 +98,11 @@ func TestVerificationHandler_HandleVerification_InvalidRequest(t *testing.T) {
 	httpReq := httptest.NewRequest("POST", "/api/v1/verify", bytes.NewBuffer(reqBody))
 	httpReq.Header.Set("Content-Type", "application/json")
 	httpReq.Header.Set("Authorization", "Bearer test-token")
+
+	// Add invalid request to context (simulating validation middleware failure)
+	ctx := httpReq.Context()
+	ctx = context.WithValue(ctx, "validated_request", nil) // No validated request
+	httpReq = httpReq.WithContext(ctx)
 
 	// Create response recorder
 	w := httptest.NewRecorder()

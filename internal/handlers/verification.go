@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/pavilion-trust/core-broker/internal/config"
 	"github.com/pavilion-trust/core-broker/internal/models"
@@ -37,16 +36,10 @@ func NewVerificationHandler(cfg *config.Config) *VerificationHandler {
 func (h *VerificationHandler) HandleVerification(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	
-	// Parse request
-	var req models.VerificationRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		writeError(w, "INVALID_REQUEST", "Failed to parse request body", http.StatusBadRequest)
-		return
-	}
-	
-	// Validate request
-	if err := req.Validate(); err != nil {
-		writeError(w, "VALIDATION_ERROR", err.Error(), http.StatusBadRequest)
+	// Get validated request from context (set by validation middleware)
+	req := getValidatedRequestFromContext(ctx)
+	if req == nil {
+		writeError(w, "INVALID_REQUEST", "Request validation failed", http.StatusBadRequest)
 		return
 	}
 	
@@ -54,23 +47,23 @@ func (h *VerificationHandler) HandleVerification(w http.ResponseWriter, r *http.
 	requestID := getRequestID(ctx)
 	
 	// Check cache first
-	if cachedResult := h.cacheService.GetVerificationResult(req); cachedResult != nil {
-		h.auditService.LogVerification(ctx, req, cachedResult, "CACHE_HIT")
+	if cachedResult := h.cacheService.GetVerificationResult(*req); cachedResult != nil {
+		h.auditService.LogVerification(ctx, *req, cachedResult, "CACHE_HIT")
 		writeResponse(w, cachedResult)
 		return
 	}
 	
 	// Enforce policy
-	if err := h.policyService.EnforcePolicy(ctx, req); err != nil {
-		h.auditService.LogVerification(ctx, req, nil, "POLICY_DENIED")
+	if err := h.policyService.EnforcePolicy(ctx, *req); err != nil {
+		h.auditService.LogVerification(ctx, *req, nil, "POLICY_DENIED")
 		writeError(w, "POLICY_VIOLATION", err.Error(), http.StatusForbidden)
 		return
 	}
 	
 	// Apply privacy-preserving transformations
-	privacyReq, err := h.privacyService.TransformRequest(ctx, req)
+	privacyReq, err := h.privacyService.TransformRequest(ctx, *req)
 	if err != nil {
-		h.auditService.LogVerification(ctx, req, nil, "PRIVACY_ERROR")
+		h.auditService.LogVerification(ctx, *req, nil, "PRIVACY_ERROR")
 		writeError(w, "PRIVACY_ERROR", "Failed to apply privacy transformations", http.StatusInternalServerError)
 		return
 	}
@@ -78,21 +71,21 @@ func (h *VerificationHandler) HandleVerification(w http.ResponseWriter, r *http.
 	// Communicate with DP Connector
 	dpResponse, err := h.dpService.VerifyWithDP(ctx, privacyReq)
 	if err != nil {
-		h.auditService.LogVerification(ctx, req, nil, "DP_ERROR")
+		h.auditService.LogVerification(ctx, *req, nil, "DP_ERROR")
 		writeError(w, "DP_ERROR", "Failed to communicate with data provider", http.StatusServiceUnavailable)
 		return
 	}
 	
 	// Generate response
-	response := h.generateResponse(req, dpResponse, requestID)
+	response := h.generateResponse(*req, dpResponse, requestID)
 	
 	// Cache successful result
 	if response.Status == "verified" {
-		h.cacheService.CacheVerificationResult(req, response)
+		h.cacheService.CacheVerificationResult(*req, response)
 	}
 	
 	// Log audit entry
-	h.auditService.LogVerification(ctx, req, response, "SUCCESS")
+	h.auditService.LogVerification(ctx, *req, response, "SUCCESS")
 	
 	// Return response
 	writeResponse(w, response)
@@ -100,14 +93,7 @@ func (h *VerificationHandler) HandleVerification(w http.ResponseWriter, r *http.
 
 // generateResponse creates a verification response
 func (h *VerificationHandler) generateResponse(req models.VerificationRequest, dpResponse *models.DPResponse, requestID string) *models.VerificationResponse {
-	response := &models.VerificationResponse{
-		VerificationID: requestID,
-		Status:         dpResponse.Status,
-		ConfidenceScore: dpResponse.ConfidenceScore,
-		Timestamp:      time.Now().Format(time.RFC3339),
-		ExpiresAt:      time.Now().Add(h.config.CacheTTL).Format(time.RFC3339),
-		RequestID:      requestID,
-	}
+	response := models.NewVerificationResponse(dpResponse.Status, dpResponse.ConfidenceScore, requestID)
 	
 	// TODO: Add JWS attestation (T-014)
 	// TODO: Add audit references (T-015)
@@ -132,16 +118,23 @@ func writeResponse(w http.ResponseWriter, response *models.VerificationResponse)
 
 // writeError writes a structured error response
 func writeError(w http.ResponseWriter, code, message string, statusCode int) {
+	errorResponse := models.NewErrorResponse(code, message, "unknown")
+	
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	
-	response := map[string]interface{}{
-		"error": map[string]interface{}{
-			"code":    code,
-			"message": message,
-			"timestamp": time.Now().Format(time.RFC3339),
-		},
+	if data, err := errorResponse.ToJSON(); err == nil {
+		w.Write(data)
+	} else {
+		// Fallback error response
+		w.Write([]byte(`{"error":{"code":"INTERNAL_ERROR","message":"Failed to format error response"}}`))
 	}
-	
-	json.NewEncoder(w).Encode(response)
+}
+
+// getValidatedRequestFromContext retrieves the validated request from context
+func getValidatedRequestFromContext(ctx context.Context) *models.VerificationRequest {
+	if req, ok := ctx.Value("validated_request").(*models.VerificationRequest); ok {
+		return req
+	}
+	return nil
 } 
