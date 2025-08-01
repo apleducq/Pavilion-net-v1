@@ -3,12 +3,14 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/pavilion-trust/core-broker/internal/config"
+	"github.com/pavilion-trust/core-broker/internal/services"
 )
 
 // RequestIDKey is the context key for request ID
@@ -116,18 +118,16 @@ func Authentication(cfg *config.Config) func(http.Handler) http.Handler {
 			
 			token := authHeader[7:]
 			
-			// TODO: Implement JWT validation with Keycloak
-			// For now, we'll just check if token exists
-			if token == "" {
-				writeError(w, "AUTHENTICATION_FAILED", "Invalid JWT token", http.StatusUnauthorized)
+			// Validate JWT token with Keycloak
+			keycloakService := services.NewKeycloakService(cfg)
+			userInfo, err := keycloakService.ValidateToken(r.Context(), token)
+			if err != nil {
+				writeError(w, "AUTHENTICATION_FAILED", fmt.Sprintf("Invalid JWT token: %v", err), http.StatusUnauthorized)
 				return
 			}
 			
-			// Add user info to context (placeholder for now)
-			ctx := context.WithValue(r.Context(), "user", map[string]interface{}{
-				"sub": "user123",
-				"rp_id": "rp123",
-			})
+			// Add user info to context
+			ctx := context.WithValue(r.Context(), "user", userInfo)
 			
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
@@ -159,4 +159,44 @@ func writeError(w http.ResponseWriter, code, message string, statusCode int) {
 	}
 	
 	json.NewEncoder(w).Encode(response)
+}
+
+// RequireRole middleware checks if the user has the required role
+func RequireRole(requiredRole string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userInfo, ok := r.Context().Value("user").(*services.UserInfo)
+			if !ok {
+				writeError(w, "AUTHORIZATION_FAILED", "User information not found", http.StatusUnauthorized)
+				return
+			}
+			
+			if !userInfo.HasRole(requiredRole) {
+				writeError(w, "AUTHORIZATION_FAILED", fmt.Sprintf("Insufficient permissions. Required role: %s", requiredRole), http.StatusForbidden)
+				return
+			}
+			
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireAnyRole middleware checks if the user has any of the required roles
+func RequireAnyRole(requiredRoles ...string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			userInfo, ok := r.Context().Value("user").(*services.UserInfo)
+			if !ok {
+				writeError(w, "AUTHORIZATION_FAILED", "User information not found", http.StatusUnauthorized)
+				return
+			}
+			
+			if !userInfo.HasAnyRole(requiredRoles...) {
+				writeError(w, "AUTHORIZATION_FAILED", fmt.Sprintf("Insufficient permissions. Required roles: %v", requiredRoles), http.StatusForbidden)
+				return
+			}
+			
+			next.ServeHTTP(w, r)
+		})
+	}
 } 

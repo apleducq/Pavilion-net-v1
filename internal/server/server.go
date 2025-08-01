@@ -36,8 +36,10 @@ func New(cfg *config.Config) *Server {
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	apiRouter.Use(middleware.Authentication(cfg))
 
-	// Verification endpoint
-	apiRouter.HandleFunc("/verify", verificationHandler.HandleVerification).Methods("POST")
+	// Verification endpoint (requires 'rp' role)
+	verificationRouter := apiRouter.PathPrefix("/verify").Subrouter()
+	verificationRouter.Use(middleware.RequireRole("rp"))
+	verificationRouter.HandleFunc("", verificationHandler.HandleVerification).Methods("POST")
 
 	// Health check endpoint (no authentication required)
 	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")

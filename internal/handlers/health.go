@@ -16,6 +16,7 @@ type HealthHandler struct {
 	policyService *services.PolicyService
 	dpService *services.DPConnectorService
 	auditService *services.AuditService
+	keycloakService *services.KeycloakService
 }
 
 // NewHealthHandler creates a new health handler
@@ -26,6 +27,7 @@ func NewHealthHandler(cfg *config.Config) *HealthHandler {
 		policyService: services.NewPolicyService(cfg),
 		dpService: services.NewDPConnectorService(cfg),
 		auditService: services.NewAuditService(cfg),
+		keycloakService: services.NewKeycloakService(cfg),
 	}
 }
 
@@ -90,6 +92,19 @@ func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		health.Status = "degraded"
 	} else {
 		health.Dependencies["audit"] = DependencyStatus{
+			Status: "healthy",
+		}
+	}
+	
+	// Check Keycloak service
+	if err := h.keycloakService.HealthCheck(ctx); err != nil {
+		health.Dependencies["keycloak"] = DependencyStatus{
+			Status: "unhealthy",
+			Error:  err.Error(),
+		}
+		health.Status = "degraded"
+	} else {
+		health.Dependencies["keycloak"] = DependencyStatus{
 			Status: "healthy",
 		}
 	}

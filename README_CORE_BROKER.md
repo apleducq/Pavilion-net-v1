@@ -67,8 +67,14 @@ The Core Broker is the central orchestrator of the Pavilion Trust Broker MVP. It
 - [x] Request/response models
 - [x] Health check endpoint
 
+### ✅ Completed (Task T-002)
+- [x] JWT authentication with Keycloak
+- [x] JWT token parsing and validation
+- [x] Role-based access control
+- [x] Authentication error handling
+- [x] Authentication middleware
+
 ### 🔄 In Progress
-- [ ] JWT authentication with Keycloak (T-002)
 - [ ] OPA policy integration (T-005)
 - [ ] Bloom-filter PPRL implementation (T-007)
 - [ ] Redis cache integration (T-019)
@@ -173,6 +179,15 @@ LOG_LEVEL=info
 ### POST /api/v1/verify
 
 Verification endpoint for processing verification requests.
+
+**Authentication:** Required (Bearer JWT token)  
+**Authorization:** Requires 'rp' role
+
+**Headers:**
+```
+Authorization: Bearer <jwt-token>
+Content-Type: application/json
+```
 
 **Request:**
 ```json
@@ -329,26 +344,27 @@ core-broker/
 ### Authentication
 - ✅ JWT token validation
 - ✅ Bearer token format checking
-- 🔄 Keycloak integration (in progress)
-- 🔄 Role-based access control (in progress)
+- ✅ Keycloak integration
+- ✅ Role-based access control
+- ✅ Authentication error handling
 
 ## Next Steps
 
 ### Immediate (Next 2 Weeks)
-1. **Complete JWT Authentication** (T-002)
-   - Integrate with Keycloak
-   - Add role-based access control
-   - Implement token validation
-
-2. **Implement OPA Integration** (T-005)
+1. **Implement OPA Integration** (T-005)
    - Connect to OPA service
    - Add policy caching
    - Handle policy failures
 
-3. **Add Redis Cache** (T-019)
+2. **Add Redis Cache** (T-019)
    - Implement Redis client
    - Add cache operations
    - Handle cache failures
+
+3. **Bloom-filter PPRL** (T-007)
+   - Research existing libraries
+   - Implement fuzzy matching
+   - Add phonetic encoding
 
 ### Short-term (Next Month)
 1. **Bloom-filter PPRL** (T-007)
