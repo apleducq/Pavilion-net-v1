@@ -88,8 +88,14 @@ The Core Broker is the central orchestrator of the Pavilion Trust Broker MVP. It
 - [x] Request ID tracking in error responses
 - [x] Graceful handling of malformed requests
 
+### ✅ Completed (Task T-005)
+- [x] OPA HTTP client setup
+- [x] Policy query interface implementation
+- [x] Policy caching layer with TTL
+- [x] OPA service failure handling
+- [x] Policy decision logging and monitoring
+
 ### 🔄 In Progress
-- [ ] OPA policy integration (T-005)
 - [ ] Bloom-filter PPRL implementation (T-007)
 - [ ] Redis cache integration (T-019)
 - [ ] JWS attestation (T-014)

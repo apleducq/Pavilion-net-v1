@@ -69,8 +69,8 @@ func TestVerificationHandler_HandleVerification(t *testing.T) {
 	if errorResponse.Error == nil {
 		t.Error("Expected error response")
 	}
-	if errorResponse.Error.Code != "POLICY_VIOLATION" {
-		t.Errorf("Expected error code 'POLICY_VIOLATION', got %s", errorResponse.Error.Code)
+	if errorResponse.Error.Code != "AUTHORIZATION_DENIED" {
+		t.Errorf("Expected error code 'AUTHORIZATION_DENIED', got %s", errorResponse.Error.Code)
 	}
 }
 

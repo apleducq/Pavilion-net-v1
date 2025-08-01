@@ -107,11 +107,11 @@ As a compliance officer, I want policy enforcement so that unauthorized access i
 **Effort**: M (3 days)  
 **Dependencies**: T-001
 
-- [ ] Set up OPA HTTP client
-- [ ] Implement policy query interface
-- [ ] Add policy caching layer
-- [ ] Handle OPA service failures
-- [ ] Add policy decision logging
+- [x] Set up OPA HTTP client
+- [x] Implement policy query interface
+- [x] Add policy caching layer
+- [x] Handle OPA service failures
+- [x] Add policy decision logging
 
 #### T-006: Implement authorization logic
 **Effort**: S (2 days)  

@@ -14,6 +14,7 @@ type HealthHandler struct {
 	config *config.Config
 	cacheService *services.CacheService
 	policyService *services.PolicyService
+	authorizationService *services.AuthorizationService
 	dpService *services.DPConnectorService
 	auditService *services.AuditService
 	keycloakService *services.KeycloakService
@@ -21,10 +22,12 @@ type HealthHandler struct {
 
 // NewHealthHandler creates a new health handler
 func NewHealthHandler(cfg *config.Config) *HealthHandler {
+	policyService := services.NewPolicyService(cfg)
 	return &HealthHandler{
 		config: cfg,
 		cacheService: services.NewCacheService(cfg),
-		policyService: services.NewPolicyService(cfg),
+		policyService: policyService,
+		authorizationService: services.NewAuthorizationService(cfg, policyService),
 		dpService: services.NewDPConnectorService(cfg),
 		auditService: services.NewAuditService(cfg),
 		keycloakService: services.NewKeycloakService(cfg),
@@ -66,6 +69,19 @@ func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 		health.Status = "degraded"
 	} else {
 		health.Dependencies["policy"] = DependencyStatus{
+			Status: "healthy",
+		}
+	}
+	
+	// Check authorization service
+	if err := h.authorizationService.HealthCheck(ctx); err != nil {
+		health.Dependencies["authorization"] = DependencyStatus{
+			Status: "unhealthy",
+			Error:  err.Error(),
+		}
+		health.Status = "degraded"
+	} else {
+		health.Dependencies["authorization"] = DependencyStatus{
 			Status: "healthy",
 		}
 	}

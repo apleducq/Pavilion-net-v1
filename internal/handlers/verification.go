@@ -13,6 +13,7 @@ import (
 // VerificationHandler handles verification requests
 type VerificationHandler struct {
 	config *config.Config
+	authorizationService *services.AuthorizationService
 	policyService *services.PolicyService
 	privacyService *services.PrivacyService
 	dpService *services.DPConnectorService
@@ -22,9 +23,11 @@ type VerificationHandler struct {
 
 // NewVerificationHandler creates a new verification handler
 func NewVerificationHandler(cfg *config.Config) *VerificationHandler {
+	policyService := services.NewPolicyService(cfg)
 	return &VerificationHandler{
 		config: cfg,
-		policyService: services.NewPolicyService(cfg),
+		authorizationService: services.NewAuthorizationService(cfg, policyService),
+		policyService: policyService,
 		privacyService: services.NewPrivacyService(cfg),
 		dpService: services.NewDPConnectorService(cfg),
 		auditService: services.NewAuditService(cfg),
@@ -53,10 +56,17 @@ func (h *VerificationHandler) HandleVerification(w http.ResponseWriter, r *http.
 		return
 	}
 	
-	// Enforce policy
-	if err := h.policyService.EnforcePolicy(ctx, *req); err != nil {
-		h.auditService.LogVerification(ctx, *req, nil, "POLICY_DENIED")
-		writeError(w, "POLICY_VIOLATION", err.Error(), http.StatusForbidden)
+	// Perform authorization checks
+	authDecision, err := h.authorizationService.AuthorizeRequest(ctx, *req)
+	if err != nil {
+		h.auditService.LogVerification(ctx, *req, nil, "AUTHORIZATION_ERROR")
+		writeError(w, "AUTHORIZATION_ERROR", "Authorization service error", http.StatusInternalServerError)
+		return
+	}
+	
+	if !authDecision.Allowed {
+		h.auditService.LogVerification(ctx, *req, nil, "AUTHORIZATION_DENIED")
+		writeError(w, "AUTHORIZATION_DENIED", authDecision.Reason, http.StatusForbidden)
 		return
 	}
 	
