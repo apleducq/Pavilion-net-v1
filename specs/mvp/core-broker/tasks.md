@@ -117,11 +117,11 @@ As a compliance officer, I want policy enforcement so that unauthorized access i
 **Effort**: S (2 days)  
 **Dependencies**: T-005
 
-- [ ] Define authorization rules
-- [ ] Implement RP permission checking
-- [ ] Implement DP access validation
-- [ ] Add policy violation handling
-- [ ] Log authorization decisions
+- [x] Define authorization rules
+- [x] Implement RP permission checking
+- [x] Implement DP access validation
+- [x] Add policy violation handling
+- [x] Log authorization decisions
 
 ### US-003: Privacy-Preserving Record Linkage
 **Epic**: E-002  
@@ -134,11 +134,11 @@ As a privacy engineer, I want PPRL so that user data remains protected during ve
 **Effort**: L (5 days)  
 **Dependencies**: T-001
 
-- [ ] Research Bloom-filter PPRL algorithms
-- [ ] Implement Bloom-filter encoding
-- [ ] Add configurable Bloom-filter parameters
-- [ ] Implement fuzzy matching for names
-- [ ] Add phonetic encoding support
+- [x] Research Bloom-filter PPRL algorithms
+- [x] Implement Bloom-filter encoding
+- [x] Add configurable Bloom-filter parameters
+- [x] Implement fuzzy matching for names
+- [x] Add phonetic encoding support
 
 #### T-008: Implement identifier hashing
 **Effort**: S (2 days)  

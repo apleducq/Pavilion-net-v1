@@ -95,8 +95,23 @@ The Core Broker is the central orchestrator of the Pavilion Trust Broker MVP. It
 - [x] OPA service failure handling
 - [x] Policy decision logging and monitoring
 
+### ✅ Completed (Task T-006)
+- [x] Authorization rules definition and management
+- [x] RP permission checking with claim type validation
+- [x] DP access validation with mapping logic
+- [x] Policy violation handling and error responses
+- [x] Authorization decision logging and audit trail
+
+### ✅ Completed (Task T-007)
+- [x] Bloom-filter PPRL algorithm research and implementation
+- [x] Configurable Bloom-filter parameters (size, hash count, false positive rate)
+- [x] Fuzzy matching for names with Levenshtein distance
+- [x] Phonetic encoding support (Soundex-like algorithm)
+- [x] Comprehensive unit tests for all PPRL components
+
 ### 🔄 In Progress
-- [ ] Bloom-filter PPRL implementation (T-007)
+- [ ] Identifier hashing implementation (T-008)
+- [ ] Privacy guarantees implementation (T-009)
 - [ ] Redis cache integration (T-019)
 - [ ] JWS attestation (T-014)
 - [ ] Merkle proof generation (T-017)

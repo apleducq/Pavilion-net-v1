@@ -32,6 +32,12 @@ type Config struct {
 	AuditDBURL     string
 	AuditBatchSize int
 
+	// Privacy/PPRL Configuration
+	BloomFilterSize     int
+	BloomFilterHashCount int
+	BloomFilterFalsePositiveRate float64
+	PhoneticEncodingEnabled bool
+
 	// Logging
 	LogLevel string
 }
@@ -63,6 +69,12 @@ func Load() (*Config, error) {
 		AuditDBURL:     getEnv("AUDIT_DB_URL", "postgres://audit:5432"),
 		AuditBatchSize: getIntEnv("AUDIT_BATCH_SIZE", 100),
 
+		// Privacy/PPRL Configuration
+		BloomFilterSize:     getIntEnv("BLOOM_FILTER_SIZE", 1000000),
+		BloomFilterHashCount: getIntEnv("BLOOM_FILTER_HASH_COUNT", 7),
+		BloomFilterFalsePositiveRate: getFloat64Env("BLOOM_FILTER_FALSE_POSITIVE_RATE", 0.01),
+		PhoneticEncodingEnabled: getBoolEnv("PHONETIC_ENCODING_ENABLED", false),
+
 		// Logging
 		LogLevel: getEnv("LOG_LEVEL", "info"),
 	}
@@ -93,6 +105,26 @@ func getDurationEnv(key string, defaultValue time.Duration) time.Duration {
 	if value := os.Getenv(key); value != "" {
 		if duration, err := time.ParseDuration(value); err == nil {
 			return duration
+		}
+	}
+	return defaultValue
+}
+
+// getFloat64Env gets a float64 environment variable or returns a default value
+func getFloat64Env(key string, defaultValue float64) float64 {
+	if value := os.Getenv(key); value != "" {
+		if floatValue, err := strconv.ParseFloat(value, 64); err == nil {
+			return floatValue
+		}
+	}
+	return defaultValue
+}
+
+// getBoolEnv gets a boolean environment variable or returns a default value
+func getBoolEnv(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		if boolValue, err := strconv.ParseBool(value); err == nil {
+			return boolValue
 		}
 	}
 	return defaultValue
