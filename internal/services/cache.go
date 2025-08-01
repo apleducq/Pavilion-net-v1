@@ -15,6 +15,10 @@ import (
 type CacheService struct {
 	config *config.Config
 	client *redis.Client
+	// Cache metrics
+	hitCount   int64
+	missCount  int64
+	errorCount int64
 }
 
 // CacheConfig represents Redis cache configuration
@@ -51,11 +55,13 @@ func (s *CacheService) GetVerificationResult(req models.VerificationRequest) *mo
 	result, err := s.client.Get(ctx, key).Result()
 	if err != nil {
 		if err == redis.Nil {
-			// Key not found
+			// Key not found - cache miss
+			s.missCount++
 			return nil
 		}
 		// Log error but don't fail the request
 		fmt.Printf("CACHE ERROR: Failed to get from cache: %v\n", err)
+		s.errorCount++
 		return nil
 	}
 
@@ -63,6 +69,7 @@ func (s *CacheService) GetVerificationResult(req models.VerificationRequest) *mo
 	var response models.VerificationResponse
 	if err := json.Unmarshal([]byte(result), &response); err != nil {
 		fmt.Printf("CACHE ERROR: Failed to deserialize cached response: %v\n", err)
+		s.errorCount++
 		return nil
 	}
 
@@ -72,14 +79,17 @@ func (s *CacheService) GetVerificationResult(req models.VerificationRequest) *mo
 		if err == nil && time.Now().After(expiresAt) {
 			// Remove expired entry
 			s.client.Del(ctx, key)
+			s.missCount++
 			return nil
 		}
 	}
 
+	// Cache hit
+	s.hitCount++
 	return &response
 }
 
-// CacheVerificationResult stores a verification result in cache
+// CacheVerificationResult stores a verification result in cache with 90-day TTL
 func (s *CacheService) CacheVerificationResult(req models.VerificationRequest, response *models.VerificationResponse) {
 	ctx := context.Background()
 	key := s.generateCacheKey(req)
@@ -88,19 +98,21 @@ func (s *CacheService) CacheVerificationResult(req models.VerificationRequest, r
 	data, err := json.Marshal(response)
 	if err != nil {
 		fmt.Printf("CACHE ERROR: Failed to serialize response: %v\n", err)
+		s.errorCount++
 		return
 	}
 
-	// Set in Redis with TTL
-	ttl := time.Duration(s.config.Redis.TTL) * time.Second
+	// Set in Redis with 90-day TTL (T-020 requirement)
+	ttl := 90 * 24 * time.Hour // 90 days
 	err = s.client.Set(ctx, key, data, ttl).Err()
 	if err != nil {
 		fmt.Printf("CACHE ERROR: Failed to cache response: %v\n", err)
+		s.errorCount++
 		return
 	}
 
-	fmt.Printf("CACHE: Cached verification result for RP %s, User %s, Claim %s (TTL: %s)\n", 
-		req.RPID, req.UserID, req.ClaimType, ttl)
+	fmt.Printf("CACHE: Cached verification result for RP %s, User %s, Claim %s (TTL: 90 days)\n", 
+		req.RPID, req.UserID, req.ClaimType)
 }
 
 // generateCacheKey creates a cache key for a verification request
@@ -154,7 +166,85 @@ func (s *CacheService) GetCacheStats() (map[string]interface{}, error) {
 	stats["info"] = info
 	stats["dbsize"], _ = s.client.DBSize(ctx).Result()
 	
+	// Add cache hit/miss metrics (T-020)
+	stats["hit_count"] = s.hitCount
+	stats["miss_count"] = s.missCount
+	stats["error_count"] = s.errorCount
+	
+	// Calculate hit rate
+	totalRequests := s.hitCount + s.missCount
+	if totalRequests > 0 {
+		stats["hit_rate"] = float64(s.hitCount) / float64(totalRequests)
+	} else {
+		stats["hit_rate"] = 0.0
+	}
+	
 	return stats, nil
+}
+
+// InvalidateVerificationCache invalidates cached verification results
+func (s *CacheService) InvalidateVerificationCache(req models.VerificationRequest) error {
+	ctx := context.Background()
+	key := s.generateCacheKey(req)
+	
+	err := s.client.Del(ctx, key).Err()
+	if err != nil {
+		fmt.Printf("CACHE ERROR: Failed to invalidate cache for key %s: %v\n", key, err)
+		s.errorCount++
+		return err
+	}
+	
+	fmt.Printf("CACHE: Invalidated verification result for RP %s, User %s, Claim %s\n", 
+		req.RPID, req.UserID, req.ClaimType)
+	return nil
+}
+
+// InvalidateCacheByPattern invalidates cache entries matching a pattern
+func (s *CacheService) InvalidateCacheByPattern(pattern string) error {
+	ctx := context.Background()
+	
+	// Scan for keys matching pattern
+	iter := s.client.Scan(ctx, 0, pattern, 0).Iterator()
+	var keys []string
+	
+	for iter.Next(ctx) {
+		keys = append(keys, iter.Val())
+	}
+	
+	if err := iter.Err(); err != nil {
+		return err
+	}
+	
+	// Delete all matching keys
+	if len(keys) > 0 {
+		err := s.client.Del(ctx, keys...).Err()
+		if err != nil {
+			fmt.Printf("CACHE ERROR: Failed to invalidate cache by pattern %s: %v\n", pattern, err)
+			s.errorCount++
+			return err
+		}
+		
+		fmt.Printf("CACHE: Invalidated %d cache entries matching pattern %s\n", len(keys), pattern)
+	}
+	
+	return nil
+}
+
+// GetCacheMetrics returns cache performance metrics
+func (s *CacheService) GetCacheMetrics() map[string]interface{} {
+	totalRequests := s.hitCount + s.missCount
+	hitRate := 0.0
+	if totalRequests > 0 {
+		hitRate = float64(s.hitCount) / float64(totalRequests)
+	}
+	
+	return map[string]interface{}{
+		"hit_count":     s.hitCount,
+		"miss_count":    s.missCount,
+		"error_count":   s.errorCount,
+		"total_requests": totalRequests,
+		"hit_rate":      hitRate,
+	}
 }
 
 // HealthCheck checks if the cache service is healthy

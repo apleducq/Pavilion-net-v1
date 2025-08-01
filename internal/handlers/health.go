@@ -13,6 +13,7 @@ import (
 type HealthHandler struct {
 	config *config.Config
 	cacheService *services.CacheService
+	configCacheService *services.ConfigCacheService
 	policyService *services.PolicyService
 	authorizationService *services.AuthorizationService
 	dpService *services.DPConnectorService
@@ -20,6 +21,10 @@ type HealthHandler struct {
 	keycloakService *services.KeycloakService
 	privacyService *services.PrivacyService
 	privacyGuaranteesService *services.PrivacyGuaranteesService
+	// Performance metrics
+	startTime time.Time
+	requestCount int64
+	errorCount int64
 }
 
 // NewHealthHandler creates a new health handler
@@ -28,6 +33,7 @@ func NewHealthHandler(cfg *config.Config) *HealthHandler {
 	return &HealthHandler{
 		config: cfg,
 		cacheService: services.NewCacheService(cfg),
+		configCacheService: services.NewConfigCacheService(cfg),
 		policyService: policyService,
 		authorizationService: services.NewAuthorizationService(cfg, policyService),
 		dpService: services.NewDPConnectorService(cfg),
@@ -35,20 +41,30 @@ func NewHealthHandler(cfg *config.Config) *HealthHandler {
 		keycloakService: services.NewKeycloakService(cfg),
 		privacyService: services.NewPrivacyService(cfg),
 		privacyGuaranteesService: services.NewPrivacyGuaranteesService(cfg),
+		startTime: time.Now(),
 	}
 }
 
-// HandleHealth processes health check requests
+// HandleHealth processes health check requests with enhanced metrics and graceful degradation
 func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	
-	// Check service dependencies
+	// Increment request count
+	h.requestCount++
+	
+	// Check service dependencies with graceful degradation
 	health := &HealthResponse{
 		Status:    "healthy",
 		Timestamp: time.Now().Format(time.RFC3339),
 		Version:   "0.1.0",
 		Environment: h.config.Env,
 		Dependencies: make(map[string]DependencyStatus),
+		Performance: PerformanceMetrics{
+			Uptime:        time.Since(h.startTime).String(),
+			RequestCount:  h.requestCount,
+			ErrorCount:    h.errorCount,
+			ErrorRate:     h.calculateErrorRate(),
+		},
 	}
 	
 	// Check cache service
@@ -57,10 +73,33 @@ func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 			Status: "unhealthy",
 			Error:  err.Error(),
 		}
+		h.errorCount++
 		health.Status = "degraded"
 	} else {
 		health.Dependencies["cache"] = DependencyStatus{
 			Status: "healthy",
+		}
+		// Add cache performance metrics
+		if cacheMetrics := h.cacheService.GetCacheMetrics(); cacheMetrics != nil {
+			health.Dependencies["cache"].Metrics = cacheMetrics
+		}
+	}
+	
+	// Check config cache service
+	if err := h.configCacheService.HealthCheck(ctx); err != nil {
+		health.Dependencies["config_cache"] = DependencyStatus{
+			Status: "unhealthy",
+			Error:  err.Error(),
+		}
+		h.errorCount++
+		health.Status = "degraded"
+	} else {
+		health.Dependencies["config_cache"] = DependencyStatus{
+			Status: "healthy",
+		}
+		// Add config cache performance metrics
+		if configMetrics := h.configCacheService.GetCachePerformance(); configMetrics != nil {
+			health.Dependencies["config_cache"].Metrics = configMetrics
 		}
 	}
 	
@@ -177,6 +216,14 @@ func (h *HealthHandler) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(health)
 }
 
+// calculateErrorRate calculates the error rate as a percentage
+func (h *HealthHandler) calculateErrorRate() float64 {
+	if h.requestCount == 0 {
+		return 0.0
+	}
+	return float64(h.errorCount) / float64(h.requestCount) * 100.0
+}
+
 // HealthResponse represents the health check response
 type HealthResponse struct {
 	Status       string                        `json:"status"`
@@ -184,10 +231,20 @@ type HealthResponse struct {
 	Version      string                        `json:"version"`
 	Environment  string                        `json:"environment"`
 	Dependencies map[string]DependencyStatus   `json:"dependencies"`
+	Performance  PerformanceMetrics            `json:"performance"`
 }
 
 // DependencyStatus represents the status of a dependency
 type DependencyStatus struct {
-	Status string `json:"status"`
-	Error  string `json:"error,omitempty"`
+	Status  string                 `json:"status"`
+	Error   string                 `json:"error,omitempty"`
+	Metrics map[string]interface{} `json:"metrics,omitempty"`
+}
+
+// PerformanceMetrics represents performance metrics
+type PerformanceMetrics struct {
+	Uptime       string  `json:"uptime"`
+	RequestCount int64   `json:"request_count"`
+	ErrorCount   int64   `json:"error_count"`
+	ErrorRate    float64 `json:"error_rate"`
 } 
