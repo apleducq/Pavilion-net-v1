@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"strings"
 
 	"github.com/pavilion-trust/core-broker/internal/config"
@@ -16,6 +17,7 @@ type PrivacyService struct {
 	bloomFilter  *BloomFilter
 	fuzzyMatcher *FuzzyMatcher
 	hashService  *HashService
+	privacyGuarantees *PrivacyGuaranteesService
 }
 
 // NewPrivacyService creates a new privacy service
@@ -28,11 +30,24 @@ func NewPrivacyService(cfg *config.Config) *PrivacyService {
 		bloomFilter:  bloomFilter,
 		fuzzyMatcher: NewFuzzyMatcher(),
 		hashService:  NewHashService(cfg),
+		privacyGuarantees: NewPrivacyGuaranteesService(cfg),
 	}
 }
 
 // TransformRequest applies privacy-preserving transformations to a verification request
 func (s *PrivacyService) TransformRequest(ctx context.Context, req models.VerificationRequest) (*models.PrivacyRequest, error) {
+	// Validate privacy compliance for all identifiers
+	for fieldName, value := range req.Identifiers {
+		if err := s.privacyGuarantees.ValidatePrivacyCompliance(fieldName, value); err != nil {
+			return nil, fmt.Errorf("privacy validation failed for %s: %w", fieldName, err)
+		}
+	}
+
+	// Validate user ID privacy compliance
+	if err := s.privacyGuarantees.ValidatePrivacyCompliance("user_id", req.UserID); err != nil {
+		return nil, fmt.Errorf("privacy validation failed for user_id: %w", err)
+	}
+
 	// Hash user ID with enhanced hashing
 	userHashResult, err := s.hashService.HashIdentifierDeterministic(req.UserID)
 	if err != nil {
@@ -42,7 +57,13 @@ func (s *PrivacyService) TransformRequest(ctx context.Context, req models.Verifi
 	// Hash all identifiers with enhanced hashing
 	hashedIdentifiers := make(map[string]string)
 	for key, value := range req.Identifiers {
-		hashResult, err := s.hashService.HashIdentifierDeterministic(value)
+		// Apply data minimization first
+		minimizedValue, err := s.privacyGuarantees.MinimizeData(key, value)
+		if err != nil {
+			return nil, fmt.Errorf("data minimization failed for %s: %w", key, err)
+		}
+
+		hashResult, err := s.hashService.HashIdentifierDeterministic(minimizedValue)
 		if err != nil {
 			return nil, err
 		}
@@ -66,6 +87,15 @@ func (s *PrivacyService) TransformRequest(ctx context.Context, req models.Verifi
 			}
 		}
 	}
+	
+	// Log privacy transformation event
+	s.privacyGuarantees.auditLogger.LogEvent(
+		"privacy_transformation",
+		"Applied privacy-preserving transformations to verification request",
+		req.UserID,
+		"", // No request ID available at this level
+		[]string{"user_id", "identifiers"},
+	)
 	
 	return &models.PrivacyRequest{
 		RPID:             req.RPID,
