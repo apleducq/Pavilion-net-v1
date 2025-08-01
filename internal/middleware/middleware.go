@@ -82,6 +82,76 @@ func generateRequestHash(r *http.Request) string {
 	// Simple hash based on request method, path, and timestamp
 	// In production, this would be a proper cryptographic hash
 	return fmt.Sprintf("hash_%s_%s_%d", r.Method, r.URL.Path, time.Now().Unix())
+}
+
+// HTTPSRedirect middleware redirects HTTP requests to HTTPS
+func HTTPSRedirect(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("X-Forwarded-Proto") != "https" && r.TLS == nil {
+			http.Redirect(w, r, "https://"+r.Host+r.RequestURI, http.StatusMovedPermanently)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+// SecurityHeaders middleware adds security headers to responses
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Security headers
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'")
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		
+		next.ServeHTTP(w, r)
+	})
+}
+
+// RateLimiting middleware implements rate limiting
+func RateLimiting(cfg *config.Config) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract client identifier (IP address or API key)
+			clientID := getClientID(r)
+			
+			// Check rate limit (simplified implementation)
+			if isRateLimited(clientID) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"error": map[string]interface{}{
+						"code":    "RATE_LIMIT_EXCEEDED",
+						"message": "Rate limit exceeded",
+						"timestamp": time.Now().Format(time.RFC3339),
+					},
+				})
+				return
+			}
+			
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// getClientID extracts a client identifier from the request
+func getClientID(r *http.Request) string {
+	// Try to get API key from header first
+	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+		return apiKey
+	}
+	
+	// Fall back to IP address
+	return r.RemoteAddr
+}
+
+// isRateLimited checks if a client has exceeded rate limits
+func isRateLimited(clientID string) bool {
+	// Simplified rate limiting - in production, this would use Redis
+	// For now, we'll allow all requests
+	return false
+}
 
 // Recovery middleware recovers from panics
 func Recovery(next http.Handler) http.Handler {

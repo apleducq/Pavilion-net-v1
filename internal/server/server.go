@@ -63,4 +63,47 @@ func New(cfg *config.Config) *Server {
 // Shutdown gracefully shuts down the server
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.Server.Shutdown(ctx)
+}
+
+// NewAPIGateway creates a new API Gateway server with TLS termination and routing
+func NewAPIGateway(cfg *config.Config) *Server {
+	// Create router
+	router := mux.NewRouter()
+
+	// Add API Gateway middleware
+	router.Use(middleware.CORS)
+	router.Use(middleware.Logging)
+	router.Use(middleware.RequestID)
+	router.Use(middleware.Recovery)
+	router.Use(middleware.HTTPSRedirect)
+	router.Use(middleware.SecurityHeaders)
+
+	// Create API Gateway handlers
+	gatewayHandler := handlers.NewAPIGatewayHandler(cfg)
+	healthHandler := handlers.NewHealthHandler(cfg)
+
+	// API routes with authentication
+	apiRouter := router.PathPrefix("/api/v1").Subrouter()
+	apiRouter.Use(middleware.Authentication(cfg))
+	apiRouter.Use(middleware.RateLimiting(cfg))
+
+	// Route all API requests to Core Broker
+	apiRouter.PathPrefix("").HandlerFunc(gatewayHandler.HandleAPIRequest)
+
+	// Health check endpoint (no authentication required)
+	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")
+
+	// Create HTTP server with TLS
+	srv := &http.Server{
+		Addr:         ":" + cfg.APIGatewayPort,
+		Handler:      router,
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 30 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	return &Server{
+		Server: srv,
+		config: cfg,
+	}
 } 

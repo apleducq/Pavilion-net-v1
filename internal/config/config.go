@@ -22,6 +22,12 @@ type Config struct {
 	Port string
 	Env  string
 
+	// API Gateway Configuration
+	APIGatewayPort string
+	TLSCertFile    string
+	TLSKeyFile     string
+	CoreBrokerURL  string
+
 	// Authentication
 	KeycloakURL  string
 	KeycloakRealm string
@@ -60,6 +66,12 @@ func Load() (*Config, error) {
 		// Service Configuration
 		Port: getEnv("PAVILION_PORT", "8080"),
 		Env:  getEnv("PAVILION_ENV", "development"),
+
+		// API Gateway Configuration
+		APIGatewayPort: getEnv("API_GATEWAY_PORT", "8443"),
+		TLSCertFile:    getEnv("TLS_CERT_FILE", "certs/server.crt"),
+		TLSKeyFile:     getEnv("TLS_KEY_FILE", "certs/server.key"),
+		CoreBrokerURL:  getEnv("CORE_BROKER_URL", "http://core-broker:8080"),
 
 		// Authentication
 		KeycloakURL:   getEnv("KEYCLOAK_URL", "http://keycloak:8080"),
