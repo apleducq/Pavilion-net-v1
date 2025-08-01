@@ -3,8 +3,18 @@ package config
 import (
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
+
+// RedisConfig holds Redis-specific configuration
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
+	TTL      int // Time to live in seconds
+}
 
 // Config holds all configuration for the Core Broker service
 type Config struct {
@@ -22,11 +32,13 @@ type Config struct {
 
 	// DP Communication
 	DPConnectorURL string
+	DPConnectorToken string
 	DPTimeout      time.Duration
 
 	// Cache Configuration
 	RedisURL   string
 	CacheTTL   time.Duration
+	Redis      RedisConfig
 
 	// Audit Configuration
 	AuditDBURL     string
@@ -59,11 +71,19 @@ func Load() (*Config, error) {
 
 		// DP Communication
 		DPConnectorURL: getEnv("DP_CONNECTOR_URL", "http://dp-connector:8080"),
+		DPConnectorToken: getEnv("DP_CONNECTOR_TOKEN", ""), // Default empty string
 		DPTimeout:      getDurationEnv("DP_TIMEOUT", 30*time.Second),
 
 		// Cache Configuration
 		RedisURL: getEnv("REDIS_URL", "redis://redis:6379"),
 		CacheTTL: getDurationEnv("CACHE_TTL", 90*24*time.Hour), // 90 days
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "redis"),
+			Port:     getIntEnv("REDIS_PORT", 6379),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getIntEnv("REDIS_DB", 0),
+			TTL:      getIntEnv("REDIS_TTL", int(90*24*3600)), // 90 days in seconds
+		},
 
 		// Audit Configuration
 		AuditDBURL:     getEnv("AUDIT_DB_URL", "postgres://audit:5432"),

@@ -59,16 +59,25 @@ func FromJSON(data []byte) (*VerificationRequest, error) {
 	return &req, nil
 }
 
-// VerificationResponse represents a verification response to an RP
+// VerificationResponse represents a verification response
 type VerificationResponse struct {
 	VerificationID  string  `json:"verification_id" validate:"required"`
 	Status          string  `json:"status" validate:"required,oneof=verified not_found error"` // verified, not_found, error
+	Verified        bool    `json:"verified"`
 	ConfidenceScore float64 `json:"confidence_score" validate:"min=0,max=1"`
+	Reason          string  `json:"reason,omitempty"`
+	Evidence        []string `json:"evidence,omitempty"`
+	DPID            string  `json:"dp_id"`
 	Attestation     string  `json:"attestation,omitempty"` // JWS token
 	AuditReference  string  `json:"audit_reference,omitempty"`
 	Timestamp       string  `json:"timestamp" validate:"required"`
 	ExpiresAt       string  `json:"expires_at" validate:"required"`
 	RequestID       string  `json:"request_id" validate:"required"`
+	ProcessingTime  string  `json:"processing_time,omitempty"`
+	RequestHash     string  `json:"request_hash,omitempty"`
+	ResponseHash    string  `json:"response_hash,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	ValidationErrors []string              `json:"validation_errors,omitempty"`
 	Error           *Error  `json:"error,omitempty"`
 }
 
@@ -111,7 +120,10 @@ type PrivacyRequest struct {
 // DPResponse represents a response from a Data Provider
 type DPResponse struct {
 	Status         string  `json:"status"`
+	Verified       bool    `json:"verified"`
 	ConfidenceScore float64 `json:"confidence_score"`
+	Reason         string  `json:"reason,omitempty"`
+	Evidence       []string `json:"evidence,omitempty"`
 	DPID          string  `json:"dp_id"`
 	Timestamp     string  `json:"timestamp"`
 	Error         string  `json:"error,omitempty"`

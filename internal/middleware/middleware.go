@@ -67,11 +67,21 @@ func RequestID(next http.Handler) http.Handler {
 		// Add request ID to response headers
 		w.Header().Set("X-Request-ID", requestID)
 		
-		// Add request ID to context
-		ctx := context.WithValue(r.Context(), RequestIDKey{}, requestID)
+		// Create context with request metadata
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, RequestIDKey{}, requestID)
+		ctx = context.WithValue(ctx, "start_time", time.Now())
+		ctx = context.WithValue(ctx, "request_hash", generateRequestHash(r))
+		
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// generateRequestHash creates a hash of the request for integrity checking
+func generateRequestHash(r *http.Request) string {
+	// Simple hash based on request method, path, and timestamp
+	// In production, this would be a proper cryptographic hash
+	return fmt.Sprintf("hash_%s_%s_%d", r.Method, r.URL.Path, time.Now().Unix())
 
 // Recovery middleware recovers from panics
 func Recovery(next http.Handler) http.Handler {

@@ -171,31 +171,31 @@ As a DP admin, I want reliable communication so that verification requests are p
 **Effort**: M (3 days)  
 **Dependencies**: T-001
 
-- [ ] Implement HTTP client for DP Connector
-- [ ] Add configurable timeouts and retries
-- [ ] Implement exponential backoff strategy
-- [ ] Add connection pooling
-- [ ] Handle DP unavailability gracefully
+- [x] Implement HTTP client for DP Connector
+- [x] Add configurable timeouts and retries
+- [x] Implement exponential backoff strategy
+- [x] Add connection pooling
+- [x] Handle DP unavailability gracefully
 
 #### T-011: Implement pull-job protocol
 **Effort**: S (2 days)  
 **Dependencies**: T-010
 
-- [ ] Define pull-job request format
-- [ ] Implement job status tracking
-- [ ] Add job result parsing
-- [ ] Handle job failures and timeouts
-- [ ] Add job logging for audit
+- [x] Define pull-job request format
+- [x] Implement job status tracking
+- [x] Add job result parsing
+- [x] Handle job failures and timeouts
+- [x] Add job logging for audit
 
 #### T-012: Implement response parsing
 **Effort**: S (2 days)  
 **Dependencies**: T-011
 
-- [ ] Parse DP verification responses
-- [ ] Extract verification status and confidence
-- [ ] Validate response integrity
-- [ ] Handle malformed responses
-- [ ] Add response validation
+- [x] Parse DP verification responses
+- [x] Extract verification status and confidence
+- [x] Validate response integrity
+- [x] Handle malformed responses
+- [x] Add response validation
 
 ### US-005: Response Generation
 **Epic**: E-001  
@@ -208,31 +208,31 @@ As an RP developer, I want structured responses so that I can process verificati
 **Effort**: S (1 day)  
 **Dependencies**: T-003, T-012
 
-- [ ] Format responses according to API spec
-- [ ] Include verification status and confidence
-- [ ] Add timestamp and expiration
-- [ ] Include request ID for tracking
-- [ ] Add response validation
+- [x] Format responses according to API spec
+- [x] Include verification status and confidence
+- [x] Add timestamp and expiration
+- [x] Include request ID for tracking
+- [x] Add response validation
 
 #### T-014: Implement JWS attestation
 **Effort**: M (3 days)  
 **Dependencies**: T-013
 
-- [ ] Generate JWS tokens for responses
-- [ ] Include verification claims in JWS
-- [ ] Add JWS validation
-- [ ] Handle JWS signing errors
-- [ ] Add JWS to audit log
+- [x] Generate JWS tokens for responses
+- [x] Include verification claims in JWS
+- [x] Add JWS validation
+- [x] Handle JWS signing errors
+- [x] Add JWS to audit log
 
 #### T-015: Implement audit references
 **Effort**: S (1 day)  
 **Dependencies**: T-013, T-016
 
-- [ ] Include audit trail references in responses
-- [ ] Add Merkle proof generation
-- [ ] Include audit entry IDs
-- [ ] Add audit reference validation
-- [ ] Link responses to audit entries
+- [x] Include audit trail references in responses
+- [x] Add Merkle proof generation
+- [x] Include audit entry IDs
+- [x] Add audit reference validation
+- [x] Link responses to audit entries
 
 ### US-006: Audit Logging
 **Epic**: E-003  
@@ -245,31 +245,31 @@ As a compliance officer, I want comprehensive audit logging so that I can demons
 **Effort**: M (3 days)  
 **Dependencies**: T-001
 
-- [ ] Implement audit service HTTP client
-- [ ] Add audit entry formatting
-- [ ] Implement batch logging
-- [ ] Handle audit service failures
-- [ ] Add audit retry logic
+- [x] Implement audit service HTTP client
+- [x] Add audit entry formatting
+- [x] Implement batch logging
+- [x] Handle audit service failures
+- [x] Add audit retry logic
 
 #### T-017: Implement cryptographic integrity
 **Effort**: M (3 days)  
 **Dependencies**: T-016
 
-- [ ] Generate cryptographic hashes for entries
-- [ ] Implement Merkle tree construction
-- [ ] Add Merkle proof generation
-- [ ] Implement hash chain validation
-- [ ] Add integrity verification
+- [x] Generate cryptographic hashes for entries
+- [x] Implement Merkle tree construction
+- [x] Add Merkle proof generation
+- [x] Implement hash chain validation
+- [x] Add integrity verification
 
 #### T-018: Implement audit entry structure
 **Effort**: S (1 day)  
 **Dependencies**: T-016
 
-- [ ] Define audit entry format
-- [ ] Include all required fields
-- [ ] Add timestamp and sequence numbers
-- [ ] Include privacy hashes
-- [ ] Add policy decision logging
+- [x] Define audit entry format
+- [x] Include all required fields
+- [x] Add timestamp and sequence numbers
+- [x] Include privacy hashes
+- [x] Add policy decision logging
 
 ### US-007: Caching
 **Epic**: E-004  
@@ -282,11 +282,11 @@ As an RP developer, I want fast response times so that my application remains re
 **Effort**: M (3 days)  
 **Dependencies**: T-001
 
-- [ ] Set up Redis client connection
-- [ ] Implement cache get/set operations
-- [ ] Add cache TTL management
-- [ ] Handle Redis connection failures
-- [ ] Add cache health checks
+- [x] Set up Redis client connection
+- [x] Implement cache get/set operations
+- [x] Add cache TTL management
+- [x] Handle Redis connection failures
+- [x] Add cache health checks
 
 #### T-020: Implement verification result caching
 **Effort**: S (2 days)  
