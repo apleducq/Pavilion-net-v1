@@ -69,15 +69,25 @@ func TestPrivacyService_TransformRequest(t *testing.T) {
 		t.Errorf("Expected ClaimType %s, got %s", req.ClaimType, privacyReq.ClaimType)
 	}
 	
-	// Check that user ID is hashed
+	// Check that user ID is hashed (should be different from original)
 	if privacyReq.UserHash == req.UserID {
 		t.Error("User ID should be hashed")
+	}
+	
+	// Check that user hash is 64 characters (SHA-256)
+	if len(privacyReq.UserHash) != 64 {
+		t.Errorf("User hash should be 64 characters, got %d", len(privacyReq.UserHash))
 	}
 	
 	// Check that identifiers are hashed
 	for key, value := range req.Identifiers {
 		if privacyReq.HashedIdentifiers[key] == value {
 			t.Errorf("Identifier %s should be hashed", key)
+		}
+		
+		// Check that hashed identifiers are 64 characters
+		if len(privacyReq.HashedIdentifiers[key]) != 64 {
+			t.Errorf("Hashed identifier %s should be 64 characters, got %d", key, len(privacyReq.HashedIdentifiers[key]))
 		}
 	}
 	
@@ -330,5 +340,35 @@ func TestPrivacyService_HealthCheck(t *testing.T) {
 	
 	if err != nil {
 		t.Errorf("Health check should not fail: %v", err)
+	}
+} 
+
+func TestPrivacyService_GetHashStats(t *testing.T) {
+	cfg := &config.Config{}
+	service := NewPrivacyService(cfg)
+	
+	stats := service.GetHashStats()
+	
+	expectedKeys := []string{"service_status", "hash_algorithm", "salt_length", "deterministic_salt_enabled"}
+	for _, key := range expectedKeys {
+		if _, exists := stats[key]; !exists {
+			t.Errorf("Stats should contain key: %s", key)
+		}
+	}
+	
+	if stats["service_status"] != "active" {
+		t.Errorf("Expected service_status 'active', got %v", stats["service_status"])
+	}
+	
+	if stats["hash_algorithm"] != "SHA-256" {
+		t.Errorf("Expected hash_algorithm 'SHA-256', got %v", stats["hash_algorithm"])
+	}
+	
+	if stats["salt_length"] != 32 {
+		t.Errorf("Expected salt_length 32, got %v", stats["salt_length"])
+	}
+	
+	if stats["deterministic_salt_enabled"] != true {
+		t.Errorf("Expected deterministic_salt_enabled true, got %v", stats["deterministic_salt_enabled"])
 	}
 } 

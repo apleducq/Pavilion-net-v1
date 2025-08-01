@@ -144,11 +144,11 @@ As a privacy engineer, I want PPRL so that user data remains protected during ve
 **Effort**: S (2 days)  
 **Dependencies**: T-007
 
-- [ ] Implement SHA-256 hashing for identifiers
-- [ ] Add salt generation for enhanced privacy
-- [ ] Implement deterministic hashing for matching
-- [ ] Add hash validation and error handling
-- [ ] Log hash operations for audit
+- [x] Implement SHA-256 hashing for identifiers
+- [x] Add salt generation for enhanced privacy
+- [x] Implement deterministic hashing for matching
+- [x] Add hash validation and error handling
+- [x] Log hash operations for audit
 
 #### T-009: Implement privacy guarantees
 **Effort**: M (3 days)  

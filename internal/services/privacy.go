@@ -15,6 +15,7 @@ type PrivacyService struct {
 	config       *config.Config
 	bloomFilter  *BloomFilter
 	fuzzyMatcher *FuzzyMatcher
+	hashService  *HashService
 }
 
 // NewPrivacyService creates a new privacy service
@@ -26,18 +27,26 @@ func NewPrivacyService(cfg *config.Config) *PrivacyService {
 		config:       cfg,
 		bloomFilter:  bloomFilter,
 		fuzzyMatcher: NewFuzzyMatcher(),
+		hashService:  NewHashService(cfg),
 	}
 }
 
 // TransformRequest applies privacy-preserving transformations to a verification request
 func (s *PrivacyService) TransformRequest(ctx context.Context, req models.VerificationRequest) (*models.PrivacyRequest, error) {
-	// Hash user ID
-	userHash := s.hashIdentifier(req.UserID)
+	// Hash user ID with enhanced hashing
+	userHashResult, err := s.hashService.HashIdentifierDeterministic(req.UserID)
+	if err != nil {
+		return nil, err
+	}
 	
-	// Hash all identifiers
+	// Hash all identifiers with enhanced hashing
 	hashedIdentifiers := make(map[string]string)
 	for key, value := range req.Identifiers {
-		hashedIdentifiers[key] = s.hashIdentifier(value)
+		hashResult, err := s.hashService.HashIdentifierDeterministic(value)
+		if err != nil {
+			return nil, err
+		}
+		hashedIdentifiers[key] = hashResult.HashedValue
 	}
 	
 	// Generate Bloom filters for fuzzy matching
@@ -60,7 +69,7 @@ func (s *PrivacyService) TransformRequest(ctx context.Context, req models.Verifi
 	
 	return &models.PrivacyRequest{
 		RPID:             req.RPID,
-		UserHash:         userHash,
+		UserHash:         userHashResult.HashedValue,
 		ClaimType:        req.ClaimType,
 		HashedIdentifiers: hashedIdentifiers,
 		BloomFilters:     bloomFilters,
@@ -68,7 +77,7 @@ func (s *PrivacyService) TransformRequest(ctx context.Context, req models.Verifi
 	}, nil
 }
 
-// hashIdentifier creates a SHA-256 hash of an identifier
+// hashIdentifier creates a SHA-256 hash of an identifier (legacy method)
 func (s *PrivacyService) hashIdentifier(identifier string) string {
 	hash := sha256.Sum256([]byte(identifier))
 	return hex.EncodeToString(hash[:])
@@ -124,8 +133,18 @@ func (s *PrivacyService) GetBloomFilterStats() map[string]interface{} {
 	}
 }
 
+// GetHashStats returns statistics about the hashing service
+func (s *PrivacyService) GetHashStats() map[string]interface{} {
+	return s.hashService.GetHashStats()
+}
+
 // HealthCheck checks if the privacy service is healthy
 func (s *PrivacyService) HealthCheck(ctx context.Context) error {
+	// Check hash service health
+	if err := s.hashService.HealthCheck(ctx); err != nil {
+		return err
+	}
+	
 	// Privacy service is stateless, so always healthy
 	return nil
 } 
