@@ -1,0 +1,13 @@
+**Mission**
+
+Enable privacy‑first, consent‑driven verification between organisations so people can prove facts about themselves **without exposing their data**, and businesses can collaborate **without brittle one‑off integrations**.
+
+**What Pavilion is**
+
+A **B2B trust broker**: one hub integration for Relying Parties (RPs) to verify eligibility/credentials with Data Providers (DPs), using verifiable credentials (VCs), privacy‑preserving record linkage (PPRL), and—where it adds value—**zero‑knowledge** proofs (ZK) and private set intersection (PSI). Pavilion **minimises data centralisation**; it orchestrates requests, policies, and proofs, with a tamper‑evident audit log.
+
+**Primary outcomes**
+
+- **Reduce integration cost/time** by 80%+ versus bespoke point‑to‑point.
+- **Lower fraud & abuse** with adaptive trust signals.
+- **Unlock cross‑sell** via reusable, consented credentials across ecosystems.

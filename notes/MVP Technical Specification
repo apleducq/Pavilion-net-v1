@@ -1,0 +1,500 @@
+## 1. MVP Overview & Scope
+
+### 1.1 Purpose
+
+Deliver a **self-contained, local** Pavilion back-end that integrates with the **DP Connector MVP** to demonstrate end-to-end student eligibility checks with immutable local audit and Merkle proofs. Everything runs on a developer’s **PC via Docker Desktop**.
+
+### 1.2 Business Outcomes
+
+- Show a **working product** to customers and partners without cloud dependencies.
+- Validate **API contracts** with RPs and **job protocol** with the DP Connector.
+- Prove **privacy-first** operation (no raw PII persisted by Pavilion), **low latency**, and **auditable** decisions.
+
+### 1.3 MVP Success Metrics
+
+- **Install & run time:** < 20 minutes on a clean machine.
+- **E2E demo:** claim from RP → policy check → DP decision → response ≤ **800 ms** cold path; **≤ 50 ms** on cache hit.
+- **Auditability:** Every decision produces a Merkle-verifiable proof locally.
+- **Compatibility:** Works with DP Connector MVP (CSV/XLSX/Postgres source, pull-job protocol).
+
+### 1.4 In Scope (MVP)
+
+- Local services: **api-gw**, **orchestrator**, **policy-svc (OPA)**, **redis**, **audit-svc (Postgres or immudb)**, **merkle-batcher**, **admin-ui**.
+- DP Connector MVP connecting outbound to `api-gw`.
+- **Student Claim Pack v1** (threshold 0.92, TTL 90 days), reason codes, JWS attestation.
+- **Local Merkle batching** (no on-chain anchoring; shown as **stub**).
+
+**Out of Scope (MVP)**
+
+- AWS/EKS deployment, Redis/PG managed services.
+- Public blockchain anchoring.
+- PSI/OPRF rail; VC issuance/verification; multi-region routing.
+
+---
+
+## 2. Environment & Prerequisites (PC)
+
+- **OS:** Windows 10/11, macOS 12+, or Ubuntu 22.04+
+- **CPU/RAM:** 4 cores / 8 GB RAM free (recommended 16 GB)
+- **Disk:** 5 GB free
+- **Tools:**
+    - **Docker Desktop** (WSL2 on Windows)
+    - **Make** (optional convenience)
+    - **curl** / **Postman**
+    - **OpenSSL** (for local certs if regenerating)
+
+---
+
+## 3. Local Docker Topology
+
+### 3.1 Containers & Responsibilities
+
+| Service | Image tag | Purpose | Ports (host) | Volumes (host → container) |
+| --- | --- | --- | --- | --- |
+| **api-gw** | pavilion/api-gw:0.1.0 | TLS termination, JWT validation, rate limiting, routing to services | 8443 | ./secrets/certs → /etc/pavilion/certs |
+| **orchestrator** | pavilion/orch:0.1.0 | Claim workflow, DP job dispatch, JWS attestation, cache & audit write | — | ./configs → /app/configs |
+| **policy-svc** | openpolicyagent/opa:0.63 | OPA sidecar serving signed policy bundles | 8181 | ./policy → /policies |
+| **redis** | redis:7-alpine | Hot cache for decisions | 6379 | ./data/redis → /data |
+| **audit-db** | postgres:16-alpine | Append-only audit store (hash chain + Merkle batches) | 5432 | ./data/postgres → /var/lib/postgresql/data |
+| **merkle-batcher** | pavilion/batcher:0.1.0 | Batches audit events, computes Merkle roots | — | — |
+| **admin-ui** | pavilion/admin-ui:0.1.0 | Local web UI for health, activity, proofs | 8080 | — |
+| **(optional)** dp-connector | pavilion/dp-connector:0.1.0 | DP Connector MVP (can also run on host) | — | ./sample-dp → /data |
+
+> All services talk on a default bridge network pavilion-net. api-gw is the only service exposed to the host for API calls.
+> 
+
+### 3.2 Container Networking (ASCII)
+
+```
+less
+CopyEdit
+RP (curl/Postman) -> https://localhost:8443  ──> [api-gw]
+                                                   │
+                                                   ▼
+                                             [orchestrator]───>[redis]
+                                                   │
+                                                   ├──policy check──>[policy-svc:8181]
+                                                   │
+                                                   ├──audit append──>[audit-db:5432]
+                                                   │
+                                                   └──DP jobs───────>[dp-connector (pulls)]
+
+Admin browser -> http://localhost:8080 ───────────>[admin-ui]
+
+```
+
+### 3.3 Local Ports
+
+- **8443** (HTTPS, RP & DP traffic)
+- **8080** (Admin UI, HTTP)
+- **6379** (Redis, localhost only)
+- **5432** (Postgres, localhost only)
+- **8181** (OPA, internal only)
+
+> Restrict DB/Redis exposure to localhost. Only 8443 and 8080 should be reachable from the host/browser.
+> 
+
+---
+
+## 4. Configuration, Secrets & Certificates
+
+### 4.1 Environment
+
+Create `.env` at repo root:
+
+```
+env
+CopyEdit
+JWT_ISSUER=http://pavilion.local
+JWT_AUDIENCE=pavilion-api
+JWKS_PATH=/etc/pavilion/certs/jwks.json
+
+REDIS_URL=redis://redis:6379
+PGHOST=audit-db
+PGPORT=5432
+PGUSER=pavilion
+PGPASSWORD=changeme
+PGDATABASE=pavilion_audit
+
+OPA_URL=http://policy-svc:8181/v1/data/policy/allow
+JWS_PRIVATE_KEY_PATH=/etc/pavilion/certs/jws-es256.key
+CACHE_TTL_SECONDS=3600
+CLAIM_DEFAULT_TTL_DAYS=90
+
+```
+
+### 4.2 Self-Signed TLS & JWKS
+
+- **api-gw** uses `server.crt/server.key` (self-signed).
+- **RP JWTs** validated against `jwks.json` (dev keys included).
+- **Orchestrator** signs **JWS** with ES256 key (`jws-es256.key`).
+
+Directory layout (excerpt):
+
+```
+pgsql
+CopyEdit
+secrets/
+  certs/
+    server.crt
+    server.key
+    jwks.json
+    jws-es256.key
+configs/
+  claim-packs/
+    student-v1.yaml
+policy/
+  bundle.tar.gz   # Rego policies
+sample-dp/
+  roster.csv
+
+```
+
+---
+
+## 5. Data Needed for Testing
+
+### 5.1 Sample DP Roster (CSV)
+
+`sample-dp/roster.csv`:
+
+```
+csv
+CopyEdit
+studentId,firstName,lastName,dob,validTo
+S0001,Ana,Ng,2005-03-01,2026-03-31
+S0002,José,Luis,2004-12-12,2026-03-31
+S0003,Tony,Smith,2003-06-05,2025-12-31
+S0004,Anthony,Smith,2003-06-05,2025-12-31
+
+```
+
+### 5.2 Sample RP Credentials
+
+- Client ID/secret for generating **JWT** (collection included).
+- Postman environment with pre-script to mint tokens from dev private key.
+
+### 5.3 Sample Requests
+
+`POST https://localhost:8443/rp/eligibility`
+
+```json
+json
+CopyEdit
+{
+  "requestId": "00000000-0000-0000-0000-000000000001",
+  "claimType": "student",
+  "purpose": "concession",
+  "dpId": "dp-sample-edu",
+  "attributes": { "firstName": "Anthony", "lastName": "Smith", "dob": "2003-06-05" },
+  "idempotencyKey": "demo-req-1"
+}
+
+```
+
+Expected response (example):
+
+```json
+json
+CopyEdit
+{
+  "decision":"ALLOW","score":0.95,
+  "reasonCodes":["NAME_JW_0.93","DOB_MATCH"],
+  "policyHash":"sha256:...","ttl":"P90D",
+  "audit":{"eventId":"...","batchId":1,"batchRoot":"0x..."},
+  "attestation":"<JWS>"
+}
+
+```
+
+---
+
+## 6. Functional Scope (MVP)
+
+### 6.1 Capabilities
+
+1. **Secure RP API** (`/rp/eligibility`) over HTTPS (JWT).
+2. **OPA policy enforcement** (RP/DP allow-lists, purpose requirement).
+3. **DP job protocol (pull/ack/heartbeat)** compatible with Connector MVP.
+4. **Deterministic + constrained fuzzy matching** happens **in Connector**.
+5. **Redis caching** (pairwise keying, TTL) for repeat decisions.
+6. **Append-only audit** in Postgres with **hash chain** and **Merkle batching**.
+7. **JWS attestation** returned with each decision.
+8. **Admin UI**: health, activity counters, basic proof viewer.
+9. **One-command demo** (`make demo`): starts stack, seeds data, runs a claim.
+
+### 6.2 Out of Scope (explicitly)
+
+- Cloud infra, public anchoring, PSI/OPRF, VC issuance/verification, multi-region routing, fee share.
+
+---
+
+## 7. Local Data Model & Persistence
+
+### 7.1 Tables (Postgres)
+
+```sql
+sql
+CopyEdit
+create table audit_event (
+  event_id uuid primary key,
+  ts timestamptz not null default now(),
+  rp_id text not null,
+  dp_id text not null,
+  claim_type text not null,
+  outcome text not null,           -- ALLOW/DENY/NOT_FOUND/ERROR
+  request_hash bytea not null,     -- sha256(canonical request)
+  prev_hash bytea not null,
+  chain_hash bytea not null,       -- sha256(prev_hash || request_hash)
+  batch_id bigint,
+  attestation_jws text not null,
+  metadata jsonb not null default '{}'
+);
+
+create table audit_batch (
+  batch_id bigserial primary key,
+  first_event_id uuid not null,
+  last_event_id uuid not null,
+  merkle_root bytea not null,
+  event_count int not null,
+  closed_ts timestamptz not null default now()
+);
+
+```
+
+**Immutability (local):** use database permissions to deny `UPDATE/DELETE` for app role; tests assert immutability.
+
+**Indexes:** `audit_event(ts)`, `audit_event(chain_hash)`, `audit_batch(merkle_root)`.
+
+---
+
+## 8. APIs & Contracts (MVP, Local)
+
+### 8.1 RP API
+
+- **POST** `/rp/eligibility`
+    
+    **Auth:** Bearer JWT (scope `eligibility:read`)
+    
+    **200:** decision payload + JWS attestation
+    
+    **Errors:** 400/401/403/429/503
+    
+
+### 8.2 DP Connector API (served by Pavilion back-end)
+
+- **POST** `/dp/jobs/pull` → returns next jobs (up to N).
+- **POST** `/dp/jobs/ack` → acknowledges with decision.
+- **POST** `/dp/heartbeat` → last seen/versions.
+
+### 8.3 Proof API
+
+- **GET** `/audit/prove?eventId=<uuid>` → canonical event + Merkle proof.
+
+**Schemas:** Published in `/contracts/openapi.yaml` and generated to SDKs for Go/TS.
+
+---
+
+## 9. Non-Functional (Local Targets)
+
+- **Latency:** cold path median ≤ 800 ms; cache hit ≤ 50 ms.
+- **Throughput:** ≥ 50 RPS on a dev laptop for demo (no DP connector bottleneck).
+- **Footprint:** each container ≤ 200 MB RAM steady state; CPU idle ≤ 5%.
+- **Security:** TLS to `api-gw`; JWT checked; no raw PII written to Pavilion DB/logs.
+- **Reliability:** services restart automatically; idempotency key prevents duplicates.
+
+---
+
+## 10. Build, Run & Demo
+
+### 10.1 Commands
+
+```bash
+bash
+CopyEdit
+# 1) Build (or pull) images
+make build      # optional if using local Dockerfiles
+
+# 2) Start stack
+docker compose up -d
+
+# 3) Seed DB & sample data
+make seed
+
+# 4) Start (or run) DP Connector
+#   a) As container:
+docker run --network pavilion-net --rm -v $PWD/sample-dp:/data pavilion/dp-connector:0.1.0 \
+  --endpoint https://api-gw:8443 --source /data/roster.csv --claim-pack student-v1
+#   b) Or run Connector on host pointing to https://localhost:8443
+
+# 5) Call the RP API (token in $TOKEN)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  https://localhost:8443/rp/eligibility -d @sample-requests/student.json | jq
+
+# 6) View Admin UI
+open http://localhost:8080
+
+```
+
+### 10.2 Expected Demo Flow
+
+1. Admin UI shows **services healthy**, **DP online**.
+2. First **eligibility** call → **ALLOW/DENY** with reasons; Admin UI shows **1 event**.
+3. Second identical call returns **CACHE_HIT**, latency **< 50 ms**.
+4. Admin UI **Proofs**: pick event ID, verify Merkle inclusion.
+
+---
+
+## 11. Practical Completion (MVP Definition of Done)
+
+**A. Functional**
+
+- [ ]  RP can call `/rp/eligibility` and receive **decision + score + reason codes + JWS**.
+- [ ]  DP Connector pulls jobs and posts decisions successfully.
+- [ ]  Policy denies missing `purpose`, unenrolled RPs, or disallowed DPs.
+- [ ]  Redis caches decisions with **configurable TTL**; pairwise keys in use.
+- [ ]  Audit row written per decision; **hash chain** consistent; **Merkle root** for batches produced.
+- [ ]  Proof API returns **verifiable** Merkle inclusion proof.
+
+**B. Non-Functional**
+
+- [ ]  p95 (cache hit) ≤ **50 ms**; cold ≤ **800 ms** on laptop.
+- [ ]  Memory & CPU within stated targets.
+- [ ]  Logs contain **no raw PII**; only opaque IDs and reason codes.
+- [ ]  Docker Compose clean up (`make down && make clean`) leaves no residual state except `/data`.
+
+**C. Ops & DX**
+
+- [ ]  `README.md` includes step-by-step runbook with screenshots.
+- [ ]  **Postman** collection & environment checked in.
+- [ ]  **Contracts** (`/contracts/openapi.yaml`) validate and generate client stubs.
+- [ ]  Unit & integration tests pass in CI; basic k6 script demonstrates 25–50 RPS.
+
+---
+
+## 12. MVP Stories (executable subset, Jira-ready)
+
+| Key | Summary | AC (G/W/T) | Pri | SP |
+| --- | --- | --- | --- | --- |
+| BE-1 | Repo + Compose scaffold | G fresh clone W `compose up` T all services healthy | P0 | 3 |
+| BE-5 | TLS gateway + JWT | G no JWT W call T 401; G valid JWT W call T 200 | P0 | 3 |
+| BE-10 | Eligibility plumbing | G payload W post T default deny + `NOT_CONFIGURED` | P0 | 3 |
+| BE-14 | OPA bundle | G policy W eval T allow/deny correctly | P0 | 3 |
+| BE-15 | Student pack v1 | G pack W call T threshold=0.92 & TTL=90d enforced | P0 | 3 |
+| BE-18 | DP job pull/ack | G pending job W pull T job received; W ack T completed | P0 | 5 |
+| BE-11 | Decision workflow v1 | G DP online W call T decision with reasons p95<800ms cold | P0 | 8 |
+| BE-12 | JWS attestation | G response W verify T ES256 signature valid | P0 | 5 |
+| BE-22 | Redis cache | G 2nd call W same req T <50ms + `CACHE_HIT` reason | P0 | 3 |
+| BE-25 | Append-only audit (PG) | G event W insert T no updates/deletes allowed | P0 | 5 |
+| BE-26 | Merkle batcher | G 100 events W batch T root computed & stored | P0 | 5 |
+| BE-27 | Proof API (local) | G eventId W call T proof verifies locally | P0 | 5 |
+| BE-28 | Admin UI health/activity | G traffic W open UI T p95, counts, status shown | P0 | 3 |
+| BE-31 | One-command demo | G clean env W `make demo` T happy path end-to-end | P0 | 2 |
+| BE-32 | Postman & README | G collection W run T green checks | P0 | 2 |
+
+---
+
+## 13. Risks (Local) & Mitigations
+
+- **Self-signed TLS breaks clients** → ship Postman that disables cert verify (local only) & document trust steps.
+- **Slow laptops cause p95 breaches** → lower batch size, ensure Connector on same bridge network, tune Docker resources.
+- **Schema drift in sample CSV** → wizard validates mapping; repo ships known-good CSV.
+- **Log PII leak** → lint checks + log redaction tests; code review gate.
+
+---
+
+## 14. Appendices
+
+### 14.1 `docker-compose.yml` (MVP skeleton)
+
+```yaml
+yaml
+CopyEdit
+version: "3.9"
+name: pavilion-mvp
+services:
+  api-gw:
+    image: pavilion/api-gw:0.1.0
+    ports: ["8443:8443"]
+    env_file: [.env]
+    volumes:
+      - ./secrets/certs:/etc/pavilion/certs:ro
+    depends_on: [orchestrator]
+    networks: [pavilion-net]
+
+  orchestrator:
+    image: pavilion/orch:0.1.0
+    env_file: [.env]
+    volumes:
+      - ./configs:/app/configs:ro
+    depends_on: [policy-svc, redis, audit-db]
+    networks: [pavilion-net]
+
+  policy-svc:
+    image: openpolicyagent/opa:0.63.0-rootless
+    command: ["run","--server","--addr=:8181","/policies/bundle.tar.gz"]
+    volumes:
+      - ./policy:/policies:ro
+    ports: ["8181:8181"]
+    networks: [pavilion-net]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--save","","--appendonly","no"]
+    ports: ["6379:6379"]
+    volumes: ["./data/redis:/data"]
+    networks: [pavilion-net]
+
+  audit-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pavilion
+      POSTGRES_PASSWORD: changeme
+      POSTGRES_DB: pavilion_audit
+    ports: ["5432:5432"]
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./deploy/pg-init:/docker-entrypoint-initdb.d:ro
+    networks: [pavilion-net]
+
+  merkle-batcher:
+    image: pavilion/batcher:0.1.0
+    env_file: [.env]
+    depends_on: [audit-db]
+    networks: [pavilion-net]
+
+  admin-ui:
+    image: pavilion/admin-ui:0.1.0
+    ports: ["8080:8080"]
+    networks: [pavilion-net]
+
+networks:
+  pavilion-net: {}
+
+```
+
+### 14.2 OPA policy snippet (Student pack v1)
+
+```
+rego
+CopyEdit
+package policy
+
+default allow = false
+
+allow {
+  input.scope == "eligibility:read"
+  input.purpose == "concession"
+  allowed_dp[input.dpId]
+  allowed_rp[input.rpId]
+}
+
+allowed_dp := {"dp-sample-edu"}
+allowed_rp := {"rp-sample-app"}
+
+```
+
+### 14.3 Reason Codes (MVP)
+
+- `ID_MATCH`, `DOB_MATCH`, `NAME_JW_0.94`, `NOT_FOUND`, `BELOW_RP_THRESHOLD`, `DP_POLICY_DENY`, `TRANSIENT_ERROR`, `CACHE_HIT`.

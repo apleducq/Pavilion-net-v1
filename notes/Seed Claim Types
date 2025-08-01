@@ -1,0 +1,296 @@
+# Foundational claim types & privacy rails (building blocks)
+
+- **Claim types (examples):** `isStudent`, `isSenior`, `age>=X`, `isMemberOf(org)`, `employmentStatus`, `enrolledProgram(code)`, `residency(country/region)`, `hasLicense(type)`, `isBeneficiary(program)`, `isCustomerOf(dp)`, `KYCLevel>=n`, `creditBand`, `addressVerified`, `deviceReputation>=t`.
+- **Privacy rails:**
+    1. **DP‑side deterministic/fuzzy** (connector)
+    2. **PSI/OPRF set membership** (equality without exposing PII)
+    3. **VC (BBS+ selective disclosure)** + **predicate proofs** (e.g., `age>=18`)
+    4. **Revocation accumulators** for offline checks
+    5. **PPRL (pairwise HMAC)** as a fallback in controlled contexts
+
+---
+
+## Education, Youth & Concessions
+
+1. **Student Discount at Cinemas** – **[D]**
+    
+    RP: Event Cinemas; DP: University/MoE.
+    
+    Claims: `isStudent`, `age>=X`. Rails: DP‑connector; VC optional. Consent: B2B or B2C (policy). SLA: <500ms. Risk: M. $: API+credential reuse. Phase: **MVP**.
+    
+2. **Public Transport Concessions (Student/Senior/Disability)** – **[D]**
+    
+    RP: Transport operators; DPs: Education, Social Services.
+    
+    Claims: `isStudent|isSenior|isBeneficiary(program)`. Rails: PSI + VC for tap‑and‑go reuse. Consent: B2C for issuance. SLA: <200ms at gate (cache/VC). Risk: H. $: API+reuse. Phase: **MVP–P1**.
+    
+3. **Software/Edu Perks for Students** – **[N]**
+    
+    RP: SaaS vendors; DP: Universities.
+    
+    Claims: `isStudent` (current semester). Rails: VC with expiry + accumulator. SLA: <800ms or offline. Risk: M. $: API+reuse. Phase: P1.
+    
+4. **Exam/Assessment Access Control** – **[N]**
+    
+    RP: Testing centers; DP: Institutions.
+    
+    Claims: `enrolledProgram(code)`. Rails: PSI for roster check. SLA: <300ms. Risk: H. Phase: P1.
+    
+
+---
+
+## Travel, Tourism & Hospitality
+
+1. **Tourist Rental Car Discount** – **[D]**
+    
+    RP: Rental car; DP: Tourism board/partner network.
+    
+    Claims: `isVisitor(fromCountry)` or membership. Rails: VC selective disclosure. SLA: <1s. Risk: M. Phase: P1.
+    
+2. **Hotel Loyalty Tier Verification Across Partners** – **[N]**
+    
+    RP: Hotels; DP: Airline/credit card loyalty.
+    
+    Claims: `loyaltyTier>=Gold`. Rails: PSI + VC. SLA: <800ms. Risk: M. Phase: P1–P2.
+    
+3. **Age‑Based Check‑in (18+/21+)** – **[N]**
+    
+    RP: Hotels/hostels.
+    
+    Claims: `age>=18/21`. Rails: VC predicate proof. SLA: <300ms (or offline). Risk: L. Phase: **MVP**.
+    
+
+---
+
+## Retail, eCommerce & Memberships
+
+1. **Club Membership Access to Events** – **[D]**
+    
+    RP: Event venue; DP: Club CRM.
+    
+    Claims: `isMemberOf(club)` (valid through date). Rails: PSI; VC for offline scanning. SLA: <200ms. Risk: M. Phase: **MVP–P1**.
+    
+2. **Employee Purchase Programs (EPP)** – **[N]**
+    
+    RP: Retailer; DP: Employer or benefits broker.
+    
+    Claims: `employmentStatus=active`. Rails: PSI; DP‑connector. SLA: <500ms. Risk: M. Phase: P1.
+    
+3. **Student/Education Storefront Pricing** – **[N]**
+    
+    RP: eCommerce. Claims: `isStudent`. Rails: VC reusable. SLA: <300ms. Risk: M. Phase: P1.
+    
+4. **Restricted Goods Age Gate (alcohol/vape)** – **[N]**
+    
+    RP: Retail POS/eCom. Claims: `age>=18/21`. Rails: VC predicate; offline accumulator for POS. SLA: <150ms. Risk: H. Phase: P1.
+    
+5. **SMB Customer List Verification for Local Perks** – **[N]**
+    
+    RP: Local merchants; DP: SMB uploaded CSV.
+    
+    Claims: `isCustomerOf(store)` existence check. Rails: PSI over hashed index. SLA: <400ms. Risk: L. Phase: **MVP**.
+    
+
+---
+
+## Finance, Fintech & Payments
+
+1. **KYC Reuse Across Fintechs** – **[N]**
+    
+    RPs: Fintech apps; DPs: Bank/ID providers.
+    
+    Claims: `KYCLevel>=2`, `residency(country)`. Rails: VC selective disclosure. SLA: <1s. Risk: H. Phase: P2.
+    
+2. **Credit Band Proof for Pre‑Qualification** – **[N]**
+    
+    RP: Lenders; DP: Credit bureau/bank.
+    
+    Claims: `creditBand in {A,B}` (no score leakage). Rails: predicate proof. SLA: <1s. Risk: H. Phase: P2.
+    
+3. **Account Ownership Proof (Name+DOB matches)** – **[N]**
+    
+    RP: PSP/acquirer. Claims: `accountOwnerMatch>=0.92`. Rails: DP‑side fuzzy; reason codes. SLA: <600ms. Risk: H. Phase: P1.
+    
+4. **Merchant KYB & Beneficial Ownership** – **[N]**
+    
+    RP: PSP/marketplace; DP: Govt registries.
+    
+    Claims: `companyActive`, `uboVerified`. Rails: PSI + VC. SLA: <2s. Risk: H. Phase: P1–P2.
+    
+
+---
+
+## Telecom & Utilities
+
+1. **SIM Registration (Age/ID with Minimal Disclosure)** – **[N]**
+    
+    RP: MNO; DP: Govt ID. Claims: `age>=X`, `idValid`. Rails: VC predicate. SLA: <1s. Risk: H. Phase: P2.
+    
+2. **Utility Hardship Eligibility** – **[D]** (social initiatives)
+    
+    RP: Utility; DP: Social services/charities.
+    
+    Claims: `isBeneficiary(program)`. Rails: PSI; VC with short TTL. SLA: <800ms. Risk: H. Phase: P1.
+    
+
+---
+
+## Government & Public Sector
+
+1. **Resident Rate Eligibility (council facilities)** – **[N]**
+    
+    RP: City services; DP: National registry.
+    
+    Claims: `residency(city/region)`. Rails: PSI; VC reuse. SLA: <300ms. Risk: M. Phase: P1.
+    
+2. **Permit & License Validation (driver/fishing)** – **[N]**
+    
+    RP: Enforcement/issuers; DP: Licensing agency.
+    
+    Claims: `hasLicense(type)=valid`. Rails: PSI; offline VC at edge. SLA: <200ms. Risk: H. Phase: P1–P2.
+    
+3. **Voting Eligibility Check (pre‑registration phase)** – **[N]**
+    
+    RP: Civic platforms; DP: Electoral roll.
+    
+    Claims: `isRegisteredVoter`. Rails: PSI; strict rate‑limit. SLA: <800ms. Risk: H. Phase: P3.
+    
+
+---
+
+## Healthcare & Wellness
+
+1. **Pharmacy Concession Pricing** – **[N]**
+    
+    RP: Pharmacy; DP: Health ministry/insurer.
+    
+    Claims: `isBeneficiary(program)`. Rails: PSI; VC for repeat. SLA: <400ms. Risk: H. Phase: P2.
+    
+2. **Fitness Benefit Eligibility (employer/insurer)** – **[N]**
+    
+    RP: Gyms/wellness; DP: Employer/insurer.
+    
+    Claims: `benefitActive(type)`. Rails: PSI or VC. SLA: <500ms. Risk: M. Phase: P1.
+    
+
+---
+
+## Employment, B2B Services & Marketplaces
+
+1. **Workforce Access to Controlled Sites** – **[N]**
+    
+    RP: Facility; DP: Employer/training body.
+    
+    Claims: `employmentStatus=active`, `certificationValid`. Rails: VC; offline scanner. SLA: <150ms. Risk: H. Phase: P1–P2.
+    
+2. **Contractor Insurance/Compliance Proof** – **[N]**
+    
+    RP: Marketplace; DP: Insurer/compliance DB.
+    
+    Claims: `policyActive`, `complianceStatus`. Rails: PSI; VC with expiry. SLA: <800ms. Risk: M. Phase: P1.
+    
+3. **B2B Volume Pricing Eligibility** – **[N]**
+    
+    RP: SaaS/wholesaler; DP: Chamber/industry body.
+    
+    Claims: `isMemberOf(industry)`, `companySize>=X`. Rails: VC selective. SLA: <500ms. Risk: L. Phase: P1.
+    
+
+---
+
+## Mobility & Smart Cities
+
+1. **Mobility Pass (multi‑operator)** – **[N]**
+    
+    RP: MaaS apps/operators; DPs: Universities/employers/city.
+    
+    Claims: `isStudent|employee|resident`. Rails: VC with revocation accumulator for gates. SLA: <150ms. Risk: H. Phase: P2.
+    
+2. **Parking Resident Permits** – **[N]**
+    
+    RP: City parking; DP: Address registry.
+    
+    Claims: `residency(zone)`. Rails: PSI; VC reuse. SLA: <300ms. Risk: M. Phase: P1.
+    
+
+---
+
+## Risk, Fraud & Trust Signals (cross‑cutting)
+
+1. **Velocity/Anomaly Checks on Eligibility Requests** – **[N]**
+    
+    RP: Any; DP: Pavilion risk service.
+    
+    Claims: `deviceReputation>=t`, `velocityOK`. Rails: Pavilion analytics (no PII). SLA: inline <80ms. Risk: H. Phase: P1–P2.
+    
+2. **Duplicate Identity Attempt Detection Across RPs** – **[N]**
+    
+    RP: Network‑wide; DP: Pavilion (privacy‑preserving counters).
+    
+    Claims: `repeatPattern(patternId)` (no raw PII). Rails: differential privacy + counts. SLA: inline. Risk: H. Phase: P2.
+    
+
+---
+
+## Digital Content, Events & Access
+
+1. **Ticket Transfer Eligibility (student sections, family zones)** – **[N]**
+    
+    RP: Ticketing; DPs: Clubs/universities.
+    
+    Claims: `isStudent|isFamilyMember`. Rails: VC; accumulator for gates. SLA: <150ms. Risk: M. Phase: P1.
+    
+2. **Age‑Gated Streaming Content** – **[N]**
+    
+    RP: Streaming service. Claims: `age>=X`. Rails: VC predicate. SLA: <300ms. Risk: L. Phase: P1.
+    
+
+---
+
+## Social Impact & Equity
+
+1. **Income‑Band Based Discounts (privacy‑preserving)** – **[D]** (equity schemes)
+    
+    RP: Utilities/transport; DP: Tax authority/benefits.
+    
+    Claims: `incomeBand in {low,med}` (no exact income). Rails: predicate proof. SLA: <1s. Risk: H. Phase: P2–P3.
+    
+2. **Non‑Profit Donor Perk Verification** – **[N]**
+    
+    RP: Museums/venues; DP: Donor CRM.
+    
+    Claims: `isDonor(tier)`. Rails: PSI / VC. SLA: <300ms. Risk: L. Phase: P1.
+    
+
+---
+
+## Data‑Provider Enablement & Ecosystem
+
+1. **SMB Self‑Service Dataset Publishing** – **[D]**
+    
+    DP: Retail/SMB via CSV/API.
+    
+    Claims enabled: `isCustomerOf(store)`, `isMemberOf`. Rails: PSI indexes. SLA: N/A. Risk: L. Phase: **MVP**.
+    
+2. **Connector Marketplace & Certification** – **[N]**
+    
+    Use: Rapid onboarding for DPs (Oracle, SAP, MS SQL, Salesforce).
+    
+    Value: Reduces integration time by 80%+. Phase: **MVP–P1**.
+    
+3. **Policy Packs (pre‑built claims + consent rules)** – **[N]**
+    
+    Use: “Student”, “Senior”, “Employment”, “Age‑gate”, “Residency” packs.
+    
+    Value: Fast‑track launches; consistent compliance. Phase: **MVP–P1**.
+    
+
+---
+
+## High‑priority shortlist for MVP/Year‑1 roadmap
+
+- **MVP (now):** #1 Student Cinema, #2 Transport Concessions, #8 Club/Event Membership, #12 SMB Customer List, #7 Age Gate 18+ (predicate VC), #36 Connector Marketplace, #37 Policy Packs.
+- **Privacy upgrades (Y1):** PSI membership for equality (applies to #1, #2, #8, #12), BBS+ selective disclosure (applies to #7/#1/#2).
+- **Early P1 expansions:** #9 EPP, #15 Account Ownership, #19 Resident Rates, #24 Workforce Access.
+
+**Core KPIs per use case:** acceptance rate uplift, fraud reduction, p95 latency, credential reuse rate, integration time, DP/RP NPS, and privacy‑enhanced rail adoption (% of checks via PSI/VC).
