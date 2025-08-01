@@ -74,6 +74,20 @@ The Core Broker is the central orchestrator of the Pavilion Trust Broker MVP. It
 - [x] Authentication error handling
 - [x] Authentication middleware
 
+### ✅ Completed (Task T-003)
+- [x] Enhanced request/response models with validation
+- [x] JSON serialization/deserialization helpers
+- [x] Comprehensive validation rules for all fields
+- [x] Request validation middleware
+- [x] Structured error responses
+
+### ✅ Completed (Task T-004)
+- [x] Structured error response format
+- [x] Error categorization and handling
+- [x] Request validation with detailed feedback
+- [x] Request ID tracking in error responses
+- [x] Graceful handling of malformed requests
+
 ### 🔄 In Progress
 - [ ] OPA policy integration (T-005)
 - [ ] Bloom-filter PPRL implementation (T-007)
@@ -356,31 +370,31 @@ core-broker/
    - Add policy caching
    - Handle policy failures
 
-2. **Add Redis Cache** (T-019)
+2. **Bloom-filter PPRL** (T-007)
+   - Research existing libraries
+   - Implement fuzzy matching
+   - Add phonetic encoding
+
+3. **Add Redis Cache** (T-019)
    - Implement Redis client
    - Add cache operations
    - Handle cache failures
 
-3. **Bloom-filter PPRL** (T-007)
-   - Research existing libraries
-   - Implement fuzzy matching
-   - Add phonetic encoding
-
 ### Short-term (Next Month)
-1. **Bloom-filter PPRL** (T-007)
-   - Research existing libraries
-   - Implement fuzzy matching
-   - Add phonetic encoding
-
-2. **JWS Attestation** (T-014)
+1. **JWS Attestation** (T-014)
    - Generate JWS tokens
    - Include verification claims
    - Add JWS validation
 
-3. **Merkle Proofs** (T-017)
+2. **Merkle Proofs** (T-017)
    - Implement Merkle tree
    - Generate cryptographic proofs
    - Add integrity verification
+
+3. **Advanced Privacy Features**
+   - PSI implementation
+   - ZKP circuits
+   - Multi-party computation
 
 ### Medium-term (Next 3 Months)
 1. **Production Deployment**
@@ -388,15 +402,15 @@ core-broker/
    - Service mesh integration
    - Monitoring and alerting
 
-2. **Advanced Privacy**
-   - PSI implementation
-   - ZKP circuits
-   - Multi-party computation
-
-3. **Compliance Features**
+2. **Compliance Features**
    - Automated evidence collection
    - Regional data residency
    - Consent tracking
+
+3. **Performance Optimization**
+   - Load balancing
+   - Database optimization
+   - Caching strategies
 
 ## Contributing
 

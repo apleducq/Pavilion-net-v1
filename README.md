@@ -147,6 +147,7 @@ Pavilion is a B2B trust broker that enables privacy‑first, consent‑driven ve
 3. **Update documentation**: Keep specs current with implementation
 4. **Test thoroughly**: Follow `/testing/` test plans
 5. **Submit for review**: Code review and specification review
+6. **Update task status**: Mark completed tasks in `/specs/*/tasks.md` files
 
 ### Specification Updates
 - **Requirements**: Update `/specs/*/requirements.md`

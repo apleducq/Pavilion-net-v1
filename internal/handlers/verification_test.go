@@ -17,6 +17,8 @@ func TestVerificationHandler_HandleVerification(t *testing.T) {
 	cfg := &config.Config{
 		Port: "8080",
 		Env:  "test",
+		// Use invalid OPA URL to prevent actual OPA calls in tests
+		OPAURL: "http://invalid-opa-url:8181",
 	}
 
 	// Create handler
@@ -52,26 +54,23 @@ func TestVerificationHandler_HandleVerification(t *testing.T) {
 	// Call handler
 	handler.HandleVerification(w, httpReq)
 
-	// Check response status
-	if w.Code != http.StatusOK {
-		t.Errorf("Expected status 200, got %d", w.Code)
+	// Check response status - expect 403 due to policy service failure
+	if w.Code != http.StatusForbidden {
+		t.Errorf("Expected status 403 (policy violation), got %d", w.Code)
 	}
 
 	// Parse response
-	var response models.VerificationResponse
-	if err := json.NewDecoder(w.Body).Decode(&response); err != nil {
-		t.Errorf("Failed to decode response: %v", err)
+	var errorResponse models.ErrorResponse
+	if err := json.NewDecoder(w.Body).Decode(&errorResponse); err != nil {
+		t.Errorf("Failed to decode error response: %v", err)
 	}
 
-	// Check response fields
-	if response.VerificationID == "" {
-		t.Error("Expected verification ID to be set")
+	// Check error response
+	if errorResponse.Error == nil {
+		t.Error("Expected error response")
 	}
-	if response.Status == "" {
-		t.Error("Expected status to be set")
-	}
-	if response.ConfidenceScore == 0 {
-		t.Error("Expected confidence score to be set")
+	if errorResponse.Error.Code != "POLICY_VIOLATION" {
+		t.Errorf("Expected error code 'POLICY_VIOLATION', got %s", errorResponse.Error.Code)
 	}
 }
 

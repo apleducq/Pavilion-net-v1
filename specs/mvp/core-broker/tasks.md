@@ -60,41 +60,41 @@ As an RP developer, I want to submit verification requests so that I can verify 
 **Effort**: M (3 days)  
 **Dependencies**: None
 
-- [ ] Set up Go HTTP server with routing
-- [ ] Implement middleware for CORS and logging
-- [ ] Add graceful shutdown handling
-- [ ] Configure TLS termination (handled by API Gateway)
-- [ ] Add request validation middleware
+- [x] Set up Go HTTP server with routing
+- [x] Implement middleware for CORS and logging
+- [x] Add graceful shutdown handling
+- [x] Configure TLS termination (handled by API Gateway)
+- [x] Add request validation middleware
 
 #### T-002: Implement JWT authentication
 **Effort**: M (3 days)  
 **Dependencies**: T-001
 
-- [ ] Integrate with Keycloak for JWT validation
-- [ ] Implement JWT token parsing and validation
-- [ ] Add role-based access control
-- [ ] Handle authentication errors gracefully
-- [ ] Add authentication middleware
+- [x] Integrate with Keycloak for JWT validation
+- [x] Implement JWT token parsing and validation
+- [x] Add role-based access control
+- [x] Handle authentication errors gracefully
+- [x] Add authentication middleware
 
 #### T-003: Implement request/response models
 **Effort**: S (1 day)  
 **Dependencies**: T-001
 
-- [ ] Define request payload structure
-- [ ] Define response payload structure
-- [ ] Implement JSON serialization/deserialization
-- [ ] Add request validation rules
-- [ ] Add response formatting
+- [x] Define request payload structure
+- [x] Define response payload structure
+- [x] Implement JSON serialization/deserialization
+- [x] Add request validation rules
+- [x] Add response formatting
 
 #### T-004: Implement error handling
 **Effort**: S (1 day)  
 **Dependencies**: T-001, T-003
 
-- [ ] Define error response format
-- [ ] Implement error categorization
-- [ ] Add structured error logging
-- [ ] Handle malformed requests gracefully
-- [ ] Add request ID tracking
+- [x] Define error response format
+- [x] Implement error categorization
+- [x] Add structured error logging
+- [x] Handle malformed requests gracefully
+- [x] Add request ID tracking
 
 ### US-002: Policy Enforcement
 **Epic**: E-001  
