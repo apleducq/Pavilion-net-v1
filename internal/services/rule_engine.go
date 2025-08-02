@@ -44,18 +44,18 @@ func NewRuleCache(ttl time.Duration) *RuleCache {
 func (c *RuleCache) Get(key string) (*RuleResult, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	result, exists := c.results[key]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Check if result has expired
 	if time.Now().After(result.ExpiresAt) {
 		delete(c.results, key)
 		return nil, false
 	}
-	
+
 	return result, true
 }
 
@@ -83,7 +83,7 @@ func (re *RuleEngine) EvaluatePolicy(ctx context.Context, policy *models.Policy,
 	}
 
 	// Evaluate conditions
-	result, err := re.evaluateConditions(ctx, policy.Conditions, credentials)
+	result, err := re.evaluateConditions(policy.Conditions, credentials)
 	if err != nil {
 		return nil, fmt.Errorf("condition evaluation failed: %w", err)
 	}
@@ -107,10 +107,10 @@ func (re *RuleEngine) EvaluatePolicy(ctx context.Context, policy *models.Policy,
 }
 
 // evaluateConditions evaluates policy conditions
-func (re *RuleEngine) evaluateConditions(ctx context.Context, conditions models.PolicyConditions, credentials []models.Credential) (*RuleResult, error) {
+func (re *RuleEngine) evaluateConditions(conditions models.PolicyConditions, credentials []models.Credential) (*RuleResult, error) {
 	// Generate cache key
 	cacheKey := re.generateCacheKey(conditions, credentials)
-	
+
 	// Check cache first
 	if cached, exists := re.cache.Get(cacheKey); exists {
 		return cached, nil
@@ -119,7 +119,7 @@ func (re *RuleEngine) evaluateConditions(ctx context.Context, conditions models.
 	// Evaluate rules based on operator
 	var results []*RuleResult
 	for _, rule := range conditions.Rules {
-		result, err := re.evaluateRule(ctx, rule, credentials)
+		result, err := re.evaluateRule(rule, credentials)
 		if err != nil {
 			return nil, fmt.Errorf("rule evaluation failed: %w", err)
 		}
@@ -149,7 +149,7 @@ func (re *RuleEngine) evaluateConditions(ctx context.Context, conditions models.
 }
 
 // evaluateRule evaluates a single policy rule
-func (re *RuleEngine) evaluateRule(ctx context.Context, rule models.PolicyRule, credentials []models.Credential) (*RuleResult, error) {
+func (re *RuleEngine) evaluateRule(rule models.PolicyRule, credentials []models.Credential) (*RuleResult, error) {
 	switch rule.Type {
 	case "credential_required":
 		return re.evaluateCredentialRequired(rule, credentials)
@@ -164,7 +164,7 @@ func (re *RuleEngine) evaluateRule(ctx context.Context, rule models.PolicyRule, 
 	case "issuer_trusted":
 		return re.evaluateIssuerTrusted(rule, credentials)
 	case "not_expired":
-		return re.evaluateNotExpired(rule, credentials)
+		return re.evaluateNotExpired(credentials)
 	default:
 		return nil, fmt.Errorf("unsupported rule type: %s", rule.Type)
 	}
@@ -223,7 +223,7 @@ func (re *RuleEngine) evaluateClaimGreaterThan(rule models.PolicyRule, credentia
 			if err != nil {
 				continue
 			}
-			
+
 			ruleNum, err := re.convertToNumber(rule.Value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid rule value: %w", err)
@@ -257,7 +257,7 @@ func (re *RuleEngine) evaluateClaimLessThan(rule models.PolicyRule, credentials 
 			if err != nil {
 				continue
 			}
-			
+
 			ruleNum, err := re.convertToNumber(rule.Value)
 			if err != nil {
 				return nil, fmt.Errorf("invalid rule value: %w", err)
@@ -291,12 +291,12 @@ func (re *RuleEngine) evaluateClaimInRange(rule models.PolicyRule, credentials [
 			if err != nil {
 				continue
 			}
-			
+
 			minNum, err := re.convertToNumber(rule.MinValue)
 			if err != nil {
 				return nil, fmt.Errorf("invalid min value: %w", err)
 			}
-			
+
 			maxNum, err := re.convertToNumber(rule.MaxValue)
 			if err != nil {
 				return nil, fmt.Errorf("invalid max value: %w", err)
@@ -343,16 +343,16 @@ func (re *RuleEngine) evaluateIssuerTrusted(rule models.PolicyRule, credentials 
 }
 
 // evaluateNotExpired checks if credentials are not expired
-func (re *RuleEngine) evaluateNotExpired(rule models.PolicyRule, credentials []models.Credential) (*RuleResult, error) {
+func (re *RuleEngine) evaluateNotExpired(credentials []models.Credential) (*RuleResult, error) {
 	now := time.Now()
-	
+
 	for _, cred := range credentials {
 		if cred.ExpirationDate != "" {
 			expiration, err := time.Parse(time.RFC3339, cred.ExpirationDate)
 			if err != nil {
 				continue // Skip invalid dates
 			}
-			
+
 			if now.Before(expiration) {
 				return &RuleResult{
 					Allowed:   true,
@@ -454,4 +454,4 @@ func (re *RuleEngine) calculateConfidence(result *RuleResult) float64 {
 		return 0.95 // High confidence for allowed results
 	}
 	return 0.85 // Slightly lower confidence for denied results
-} 
+}

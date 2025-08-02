@@ -18,7 +18,6 @@ type PolicyService struct {
 	config *config.Config
 	client *http.Client
 	cache  *PolicyCache
-	mu     sync.RWMutex
 }
 
 // PolicyCache provides caching for policy decisions
@@ -40,12 +39,12 @@ func NewPolicyCache(ttl time.Duration) *PolicyCache {
 func (c *PolicyCache) Get(key string) (*models.PolicyDecision, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	decision, exists := c.decisions[key]
 	if !exists {
 		return nil, false
 	}
-	
+
 	// Check if decision has expired
 	timestamp, err := time.Parse(time.RFC3339, decision.Timestamp)
 	if err != nil {
@@ -53,12 +52,12 @@ func (c *PolicyCache) Get(key string) (*models.PolicyDecision, bool) {
 		delete(c.decisions, key)
 		return nil, false
 	}
-	
+
 	if time.Since(timestamp) > c.ttl {
 		delete(c.decisions, key)
 		return nil, false
 	}
-	
+
 	return decision, true
 }
 
@@ -84,7 +83,7 @@ func NewPolicyService(cfg *config.Config) *PolicyService {
 func (s *PolicyService) EnforcePolicy(ctx context.Context, req models.VerificationRequest) error {
 	// Generate cache key based on request parameters
 	cacheKey := s.generateCacheKey(req)
-	
+
 	// Check cache first
 	if cached, exists := s.cache.Get(cacheKey); exists {
 		if !cached.Allowed {
@@ -152,7 +151,7 @@ func (s *PolicyService) queryOPA(ctx context.Context, query map[string]interface
 	var opaResponse struct {
 		Result bool `json:"result"`
 	}
-	
+
 	if err := json.NewDecoder(resp.Body).Decode(&opaResponse); err != nil {
 		return nil, fmt.Errorf("failed to parse OPA response: %w", err)
 	}
@@ -203,9 +202,9 @@ func (s *PolicyService) HealthCheck(ctx context.Context) error {
 func (s *PolicyService) GetCacheStats() map[string]interface{} {
 	s.cache.mu.RLock()
 	defer s.cache.mu.RUnlock()
-	
+
 	return map[string]interface{}{
 		"cached_decisions": len(s.cache.decisions),
 		"cache_ttl":        s.cache.ttl.String(),
 	}
-} 
+}

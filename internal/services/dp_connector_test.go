@@ -368,10 +368,11 @@ func TestDPConnectorService_GetDPStats(t *testing.T) {
 func TestConnectionPool_EnhancedFeatures(t *testing.T) {
 	// Create a test server
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/health" {
+		switch r.URL.Path {
+		case "/health":
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("healthy"))
-		} else {
+		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -953,14 +954,15 @@ func TestIntegrationAdapters(t *testing.T) {
 	t.Run("REST Adapter", func(t *testing.T) {
 		// Create test server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/health" {
+			switch r.URL.Path {
+			case "/health":
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"status": "healthy"}`))
-			} else if r.URL.Path == "/api/v1/verify" {
+			case "/api/v1/verify":
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"result": "success", "data": "test_response"}`))
-			} else {
+			default:
 				w.WriteHeader(http.StatusNotFound)
 			}
 		}))
@@ -1213,10 +1215,11 @@ func TestAdapterFunctionalityTests(t *testing.T) {
 	t.Run("Test REST Adapter Functionality", func(t *testing.T) {
 		// Create test server
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if r.URL.Path == "/health" {
+			switch r.URL.Path {
+			case "/health":
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"status": "healthy"}`))
-			} else if r.URL.Path == "/api/v1/verify" {
+			case "/api/v1/verify":
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(`{"result": "success"}`))

@@ -373,7 +373,7 @@ func (s *CryptographicIntegrityService) HealthCheck(ctx context.Context) error {
 
 	root := s.BuildMerkleTree(sampleEntries)
 	if root == nil {
-		return fmt.Errorf("Merkle tree construction failed")
+		return fmt.Errorf("merkle tree construction failed")
 	}
 
 	return nil

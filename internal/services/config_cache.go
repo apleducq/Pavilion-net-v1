@@ -17,50 +17,50 @@ type ConfigCacheService struct {
 	client *redis.Client
 	mu     sync.RWMutex
 	// Configuration cache metrics
-	dpConfigHits     int64
-	policyRuleHits   int64
-	policyDecisionHits int64
-	dpConfigMisses   int64
-	policyRuleMisses int64
+	dpConfigHits         int64
+	policyRuleHits       int64
+	policyDecisionHits   int64
+	dpConfigMisses       int64
+	policyRuleMisses     int64
 	policyDecisionMisses int64
-	errors           int64
+	errors               int64
 }
 
 // DPConfig represents cached DP configuration data
 type DPConfig struct {
-	DPID           string                 `json:"dp_id"`
-	Name           string                 `json:"name"`
-	Endpoint       string                 `json:"endpoint"`
-	SupportedClaims []string              `json:"supported_claims"`
-	RateLimit      int                    `json:"rate_limit"`
-	Timeout        time.Duration          `json:"timeout"`
-	Metadata       map[string]interface{} `json:"metadata"`
-	LastUpdated    string                 `json:"last_updated"`
+	DPID            string                 `json:"dp_id"`
+	Name            string                 `json:"name"`
+	Endpoint        string                 `json:"endpoint"`
+	SupportedClaims []string               `json:"supported_claims"`
+	RateLimit       int                    `json:"rate_limit"`
+	Timeout         time.Duration          `json:"timeout"`
+	Metadata        map[string]interface{} `json:"metadata"`
+	LastUpdated     string                 `json:"last_updated"`
 }
 
 // PolicyRule represents cached policy rules
 type PolicyRule struct {
-	RuleID         string                 `json:"rule_id"`
-	Name           string                 `json:"name"`
-	Description    string                 `json:"description"`
-	Conditions     map[string]interface{} `json:"conditions"`
-	Actions        []string               `json:"actions"`
-	Priority       int                    `json:"priority"`
-	Enabled        bool                   `json:"enabled"`
-	LastUpdated    string                 `json:"last_updated"`
+	RuleID      string                 `json:"rule_id"`
+	Name        string                 `json:"name"`
+	Description string                 `json:"description"`
+	Conditions  map[string]interface{} `json:"conditions"`
+	Actions     []string               `json:"actions"`
+	Priority    int                    `json:"priority"`
+	Enabled     bool                   `json:"enabled"`
+	LastUpdated string                 `json:"last_updated"`
 }
 
 // PolicyDecision represents cached policy decisions
 type PolicyDecision struct {
-	DecisionID     string                 `json:"decision_id"`
-	RequestID      string                 `json:"request_id"`
-	RPID           string                 `json:"rp_id"`
-	ClaimType      string                 `json:"claim_type"`
-	Decision       string                 `json:"decision"`
-	Reason         string                 `json:"reason"`
-	AppliedRules   []string               `json:"applied_rules"`
-	Timestamp      string                 `json:"timestamp"`
-	ExpiresAt      string                 `json:"expires_at"`
+	DecisionID   string   `json:"decision_id"`
+	RequestID    string   `json:"request_id"`
+	RPID         string   `json:"rp_id"`
+	ClaimType    string   `json:"claim_type"`
+	Decision     string   `json:"decision"`
+	Reason       string   `json:"reason"`
+	AppliedRules []string `json:"applied_rules"`
+	Timestamp    string   `json:"timestamp"`
+	ExpiresAt    string   `json:"expires_at"`
 }
 
 // NewConfigCacheService creates a new configuration cache service
@@ -259,26 +259,26 @@ func (s *ConfigCacheService) WarmCache() error {
 	// Warm DP configurations (mock data for now)
 	dpConfigs := []*DPConfig{
 		{
-			DPID:           "dp-001",
-			Name:           "Student Records DP",
-			Endpoint:       "https://student-records.example.com/api",
+			DPID:            "dp-001",
+			Name:            "Student Records DP",
+			Endpoint:        "https://student-records.example.com/api",
 			SupportedClaims: []string{"student_verification", "enrollment_status"},
-			RateLimit:      1000,
-			Timeout:        30 * time.Second,
+			RateLimit:       1000,
+			Timeout:         30 * time.Second,
 			Metadata: map[string]interface{}{
-				"region": "us-east-1",
+				"region":  "us-east-1",
 				"version": "1.0.0",
 			},
 		},
 		{
-			DPID:           "dp-002",
-			Name:           "Employment Records DP",
-			Endpoint:       "https://employment-records.example.com/api",
+			DPID:            "dp-002",
+			Name:            "Employment Records DP",
+			Endpoint:        "https://employment-records.example.com/api",
 			SupportedClaims: []string{"employee_verification", "employment_status"},
-			RateLimit:      500,
-			Timeout:        45 * time.Second,
+			RateLimit:       500,
+			Timeout:         45 * time.Second,
 			Metadata: map[string]interface{}{
-				"region": "us-west-2",
+				"region":  "us-west-2",
 				"version": "1.1.0",
 			},
 		},
@@ -298,7 +298,7 @@ func (s *ConfigCacheService) WarmCache() error {
 			Name:        "Student Verification Rule",
 			Description: "Allow student verification requests",
 			Conditions: map[string]interface{}{
-				"claim_type": "student_verification",
+				"claim_type":     "student_verification",
 				"rp_trust_level": "high",
 			},
 			Actions:  []string{"ALLOW"},
@@ -310,7 +310,7 @@ func (s *ConfigCacheService) WarmCache() error {
 			Name:        "Employee Verification Rule",
 			Description: "Allow employee verification requests",
 			Conditions: map[string]interface{}{
-				"claim_type": "employee_verification",
+				"claim_type":     "employee_verification",
 				"rp_trust_level": "medium",
 			},
 			Actions:  []string{"ALLOW"},
@@ -441,7 +441,7 @@ func (s *ConfigCacheService) HealthCheck(ctx context.Context) error {
 	// Test Redis connection
 	_, err := s.client.Ping(ctx).Result()
 	if err != nil {
-		return fmt.Errorf("Redis connection failed: %v", err)
+		return fmt.Errorf("redis connection failed: %v", err)
 	}
 
 	// Test basic operations
@@ -451,17 +451,17 @@ func (s *ConfigCacheService) HealthCheck(ctx context.Context) error {
 	// Set test value
 	err = s.client.Set(ctx, testKey, testValue, time.Minute).Err()
 	if err != nil {
-		return fmt.Errorf("Redis set operation failed: %v", err)
+		return fmt.Errorf("redis set operation failed: %v", err)
 	}
 
 	// Get test value
 	result, err := s.client.Get(ctx, testKey).Result()
 	if err != nil {
-		return fmt.Errorf("Redis get operation failed: %v", err)
+		return fmt.Errorf("redis get operation failed: %v", err)
 	}
 
 	if result != testValue {
-		return fmt.Errorf("Redis get operation returned wrong value")
+		return fmt.Errorf("redis get operation returned wrong value")
 	}
 
 	// Clean up test key
@@ -473,4 +473,4 @@ func (s *ConfigCacheService) HealthCheck(ctx context.Context) error {
 // Close closes the Redis connection
 func (s *ConfigCacheService) Close() error {
 	return s.client.Close()
-} 
+}

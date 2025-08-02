@@ -111,7 +111,7 @@ func (s *KeycloakService) fetchPublicKeys(ctx context.Context) error {
 	}
 
 	// Fetch JWKS (JSON Web Key Set) from Keycloak
-	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs", 
+	jwksURL := fmt.Sprintf("%s/realms/%s/protocol/openid-connect/certs",
 		s.config.KeycloakURL, s.config.KeycloakRealm)
 
 	req, err := http.NewRequestWithContext(ctx, "GET", jwksURL, nil)
@@ -148,7 +148,7 @@ func (s *KeycloakService) fetchPublicKeys(ctx context.Context) error {
 	// Convert JWKS to public keys
 	for _, key := range jwks.Keys {
 		if key.Use == "sig" && key.Kty == "RSA" {
-			publicKey, err := s.convertJWKToPublicKey(key.N, key.E)
+			publicKey, err := s.convertJWKToPublicKey()
 			if err != nil {
 				continue // Skip invalid keys
 			}
@@ -161,12 +161,12 @@ func (s *KeycloakService) fetchPublicKeys(ctx context.Context) error {
 }
 
 // convertJWKToPublicKey converts JWK to RSA public key
-func (s *KeycloakService) convertJWKToPublicKey(n, e string) (*rsa.PublicKey, error) {
+func (s *KeycloakService) convertJWKToPublicKey() (*rsa.PublicKey, error) {
 	// This is a simplified implementation
 	// In production, you'd want to use a proper JWK library
 	// For now, we'll use a mock implementation
 	return &rsa.PublicKey{
-		N: nil, // Would be decoded from base64url
+		N: nil,   // Would be decoded from base64url
 		E: 65537, // Default exponent
 	}, nil
 }
@@ -271,4 +271,4 @@ func (u *UserInfo) HasAnyRole(roles ...string) bool {
 func (s *KeycloakService) HealthCheck(ctx context.Context) error {
 	// Try to fetch public keys as a health check
 	return s.fetchPublicKeys(ctx)
-} 
+}
