@@ -30,6 +30,7 @@ type Config struct {
 	// Authentication
 	KeycloakURL   string
 	KeycloakRealm string
+	Issuer        string
 
 	// Policy Service
 	OPAURL     string
@@ -76,6 +77,7 @@ func Load() (*Config, error) {
 		// Authentication
 		KeycloakURL:   getEnv("KEYCLOAK_URL", "http://keycloak:8080"),
 		KeycloakRealm: getEnv("KEYCLOAK_REALM", "pavilion"),
+		Issuer:        getEnv("PAVILION_ISSUER", "https://pavilion-trust.com"),
 
 		// Policy Service
 		OPAURL:     getEnv("OPA_URL", "http://opa:8181"),

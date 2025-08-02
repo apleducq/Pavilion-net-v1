@@ -2,6 +2,10 @@ package server
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"time"
@@ -33,6 +37,18 @@ func New(cfg *config.Config) *Server {
 	// Create handlers
 	verificationHandler := handlers.NewVerificationHandler(cfg)
 	healthHandler := handlers.NewHealthHandler(cfg)
+
+	// Create credential signing service
+	rsaKey, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to generate RSA key: %v", err))
+	}
+	ecdsaKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to generate ECDSA key: %v", err))
+	}
+	signingService := services.NewCredentialSigningService(rsaKey, ecdsaKey, "key-1", cfg.Issuer)
+	credentialHandler := handlers.NewCredentialHandler(cfg, signingService)
 
 	// Create policy storage and handler
 	policyStorage, err := services.NewPolicyStorage(cfg)
@@ -77,6 +93,18 @@ func New(cfg *config.Config) *Server {
 
 	// Health endpoint
 	policyRouter.HandleFunc("/health", policyHandler.HandleHealth).Methods("GET")
+
+	// Credential endpoints (requires 'admin' role)
+	credentialRouter := apiRouter.PathPrefix("/credentials").Subrouter()
+	credentialRouter.Use(middleware.RequireRole("admin"))
+
+	// Credential CRUD operations
+	credentialRouter.HandleFunc("", credentialHandler.HandleCreateCredential).Methods("POST")
+	credentialRouter.HandleFunc("", credentialHandler.HandleListCredentials).Methods("GET")
+	credentialRouter.HandleFunc("/{id}", credentialHandler.HandleGetCredential).Methods("GET")
+	credentialRouter.HandleFunc("/{id}/revoke", credentialHandler.HandleRevokeCredential).Methods("POST")
+	credentialRouter.HandleFunc("/{id}/status", credentialHandler.HandleGetCredentialStatus).Methods("GET")
+	credentialRouter.HandleFunc("/{id}/verify", credentialHandler.HandleVerifyCredential).Methods("POST")
 
 	// Health check endpoint (no authentication required)
 	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")

@@ -196,6 +196,10 @@ func (cv *CredentialValidator) validateStructure(credential *models.Credential) 
 		return fmt.Errorf("credential issuance date is required")
 	}
 
+	if credential.Version == "" {
+		return fmt.Errorf("credential version is required")
+	}
+
 	if len(credential.Claims) == 0 {
 		return fmt.Errorf("credential must have at least one claim")
 	}

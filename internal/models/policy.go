@@ -18,17 +18,17 @@ type Policy struct {
 	Description string                 `json:"description" validate:"max=500"`
 	Conditions  PolicyConditions       `json:"conditions" validate:"required"`
 	Privacy     PrivacySettings        `json:"privacy" validate:"required"`
-	CreatedAt   string                `json:"created_at" validate:"required"`
-	UpdatedAt   string                `json:"updated_at" validate:"required"`
-	CreatedBy   string                `json:"created_by" validate:"required"`
+	CreatedAt   string                 `json:"created_at" validate:"required"`
+	UpdatedAt   string                 `json:"updated_at" validate:"required"`
+	CreatedBy   string                 `json:"created_by" validate:"required"`
 	Status      string                 `json:"status" validate:"required,oneof=active inactive draft"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // PolicyConditions represents the conditions for a policy
 type PolicyConditions struct {
-	Operator string        `json:"operator" validate:"required,oneof=AND OR NOT"`
-	Rules    []PolicyRule  `json:"rules" validate:"required,min=1,dive"`
+	Operator string       `json:"operator" validate:"required,oneof=AND OR NOT"`
+	Rules    []PolicyRule `json:"rules" validate:"required,min=1,dive"`
 }
 
 // PolicyRule represents a single policy rule
@@ -45,10 +45,10 @@ type PolicyRule struct {
 
 // PrivacySettings represents privacy configuration for a policy
 type PrivacySettings struct {
-	PPRLEnabled        bool   `json:"pprl_enabled"`
+	PPRLEnabled         bool   `json:"pprl_enabled"`
 	SelectiveDisclosure bool   `json:"selective_disclosure"`
-	AuditLevel         string `json:"audit_level" validate:"required,oneof=minimal standard detailed"`
-	RetentionDays      int    `json:"retention_days" validate:"min=1,max=3650"`
+	AuditLevel          string `json:"audit_level" validate:"required,oneof=minimal standard detailed"`
+	RetentionDays       int    `json:"retention_days" validate:"min=1,max=3650"`
 }
 
 // PolicyTemplate represents a policy template
@@ -58,9 +58,9 @@ type PolicyTemplate struct {
 	Description string                 `json:"description" validate:"max=500"`
 	Category    string                 `json:"category" validate:"required,oneof=age_verification student_verification employment_verification address_verification"`
 	Template    Policy                 `json:"template" validate:"required"`
-	CreatedAt   string                `json:"created_at" validate:"required"`
-	UpdatedAt   string                `json:"updated_at" validate:"required"`
-	CreatedBy   string                `json:"created_by" validate:"required"`
+	CreatedAt   string                 `json:"created_at" validate:"required"`
+	UpdatedAt   string                 `json:"updated_at" validate:"required"`
+	CreatedBy   string                 `json:"created_by" validate:"required"`
 	Status      string                 `json:"status" validate:"required,oneof=active inactive draft"`
 	Metadata    map[string]interface{} `json:"metadata,omitempty"`
 }
@@ -76,15 +76,17 @@ type PolicyEvaluationRequest struct {
 
 // Credential represents a verifiable credential
 type Credential struct {
-	ID           string                 `json:"id" validate:"required"`
-	Type         string                 `json:"type" validate:"required"`
-	Issuer       string                 `json:"issuer" validate:"required"`
-	Subject      string                 `json:"subject" validate:"required"`
-	IssuanceDate string                 `json:"issuance_date" validate:"required"`
-	ExpirationDate string               `json:"expiration_date,omitempty"`
-	Claims       map[string]interface{} `json:"claims" validate:"required"`
-	Proof        CredentialProof        `json:"proof" validate:"required"`
-	Status       string                 `json:"status" validate:"required,oneof=valid revoked expired"`
+	ID             string                 `json:"id" validate:"required"`
+	Type           string                 `json:"type" validate:"required"`
+	Issuer         string                 `json:"issuer" validate:"required"`
+	Subject        string                 `json:"subject" validate:"required"`
+	IssuanceDate   string                 `json:"issuance_date" validate:"required"`
+	ExpirationDate string                 `json:"expiration_date,omitempty"`
+	Version        string                 `json:"version" validate:"required"`
+	Claims         map[string]interface{} `json:"claims" validate:"required"`
+	Proof          CredentialProof        `json:"proof" validate:"required"`
+	Status         string                 `json:"status" validate:"required,oneof=valid revoked expired"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // CredentialProof represents a credential proof
@@ -98,15 +100,15 @@ type CredentialProof struct {
 
 // PolicyEvaluationResponse represents a policy evaluation response
 type PolicyEvaluationResponse struct {
-	RequestID    string                 `json:"request_id" validate:"required"`
-	PolicyID     string                 `json:"policy_id" validate:"required"`
-	Allowed      bool                   `json:"allowed"`
-	Reason       string                 `json:"reason"`
-	Confidence   float64                `json:"confidence" validate:"min=0,max=1"`
-	EvaluatedAt  string                 `json:"evaluated_at" validate:"required"`
-	ProcessingTime string               `json:"processing_time,omitempty"`
-	Evidence     []string               `json:"evidence,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	RequestID      string                 `json:"request_id" validate:"required"`
+	PolicyID       string                 `json:"policy_id" validate:"required"`
+	Allowed        bool                   `json:"allowed"`
+	Reason         string                 `json:"reason"`
+	Confidence     float64                `json:"confidence" validate:"min=0,max=1"`
+	EvaluatedAt    string                 `json:"evaluated_at" validate:"required"`
+	ProcessingTime string                 `json:"processing_time,omitempty"`
+	Evidence       []string               `json:"evidence,omitempty"`
+	Metadata       map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // PolicyStorage interface defines methods for policy storage
@@ -266,4 +268,4 @@ func PolicyEvaluationResponseFromJSON(data []byte) (*PolicyEvaluationResponse, e
 		return nil, fmt.Errorf("failed to parse policy evaluation response JSON: %w", err)
 	}
 	return &response, nil
-} 
+}
