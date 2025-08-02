@@ -1,0 +1,52 @@
+[1mdiff --git a/internal/server/server.go b/internal/server/server.go[m
+[1mindex 624775f..165b0dd 100644[m
+[1m--- a/internal/server/server.go[m
+[1m+++ b/internal/server/server.go[m
+[36m@@ -31,6 +31,13 @@[m [mfunc New(cfg *config.Config) *Server {[m
+ 	// Create handlers[m
+ 	verificationHandler := handlers.NewVerificationHandler(cfg)[m
+ 	healthHandler := handlers.NewHealthHandler(cfg)[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Create policy storage and handler[m
+[32m+[m	[32mpolicyStorage, err := services.NewPolicyStorage(cfg)[m
+[32m+[m	[32mif err != nil {[m
+[32m+[m		[32mpanic(fmt.Sprintf("Failed to create policy storage: %v", err))[m
+[32m+[m	[32m}[m
+[32m+[m	[32mpolicyHandler := handlers.NewPolicyHandler(cfg, policyStorage)[m
+ [m
+ 	// API routes[m
+ 	apiRouter := router.PathPrefix("/api/v1").Subrouter()[m
+[36m@@ -42,6 +49,33 @@[m [mfunc New(cfg *config.Config) *Server {[m
+ 	verificationRouter.Use(middleware.ValidationMiddleware)[m
+ 	verificationRouter.HandleFunc("", verificationHandler.HandleVerification).Methods("POST")[m
+ [m
+[32m+[m	[32m// Policy endpoints (requires 'admin' role)[m
+[32m+[m	[32mpolicyRouter := apiRouter.PathPrefix("/policies").Subrouter()[m
+[32m+[m	[32mpolicyRouter.Use(middleware.RequireRole("admin"))[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Policy CRUD operations[m
+[32m+[m	[32mpolicyRouter.HandleFunc("", policyHandler.HandleCreatePolicy).Methods("POST")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("", policyHandler.HandleListPolicies).Methods("GET")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/{id}", policyHandler.HandleGetPolicy).Methods("GET")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/{id}", policyHandler.HandleUpdatePolicy).Methods("PUT")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/{id}", policyHandler.HandleDeletePolicy).Methods("DELETE")[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Policy evaluation[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/evaluate", policyHandler.HandleEvaluatePolicy).Methods("POST")[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Policy templates[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/templates", policyHandler.HandleCreateTemplate).Methods("POST")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/templates", policyHandler.HandleListTemplates).Methods("GET")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/templates/{id}", policyHandler.HandleGetTemplate).Methods("GET")[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Audit endpoints[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/audit", policyHandler.HandleGetAuditLogs).Methods("GET")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/audit/{request_id}", policyHandler.HandleGetAuditLog).Methods("GET")[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/audit/stats", policyHandler.HandleGetAuditStats).Methods("GET")[m
+[32m+[m[41m	[m
+[32m+[m	[32m// Health endpoint[m
+[32m+[m	[32mpolicyRouter.HandleFunc("/health", policyHandler.HandleHealth).Methods("GET")[m
+[32m+[m
+ 	// Health check endpoint (no authentication required)[m
+ 	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")[m
+ [m

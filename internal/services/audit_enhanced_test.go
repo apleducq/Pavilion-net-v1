@@ -9,6 +9,13 @@ import (
 	"github.com/pavilion-trust/core-broker/internal/models"
 )
 
+// contextKey is a custom type for context keys to avoid collisions
+type contextKey string
+
+const (
+	requestIDKey contextKey = "request_id"
+)
+
 func TestGetPolicyDecision(t *testing.T) {
 	service := NewAuditService(&config.Config{})
 	ctx := context.Background()
@@ -176,7 +183,7 @@ func TestGetNextSequenceNumber(t *testing.T) {
 
 func TestLogPolicyDecision(t *testing.T) {
 	service := NewAuditService(&config.Config{})
-	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 
 	req := models.VerificationRequest{
 		RPID:      "rp-001",
@@ -193,7 +200,7 @@ func TestLogPolicyDecision(t *testing.T) {
 
 func TestLogPrivacyHash(t *testing.T) {
 	service := NewAuditService(&config.Config{})
-	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 
 	req := models.VerificationRequest{
 		RPID:      "rp-001",
@@ -212,7 +219,7 @@ func TestLogPrivacyHash(t *testing.T) {
 
 func TestEnhancedLogVerification(t *testing.T) {
 	service := NewAuditService(&config.Config{})
-	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 
 	req := models.VerificationRequest{
 		RPID:      "rp-001",
@@ -283,7 +290,7 @@ func TestEnhancedHealthCheck(t *testing.T) {
 
 func TestAuditEntryStructure(t *testing.T) {
 	service := NewAuditService(&config.Config{})
-	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 
 	req := models.VerificationRequest{
 		RPID:      "rp-001",
@@ -335,7 +342,7 @@ func TestAuditEntryStructure(t *testing.T) {
 
 func TestPolicyDecisionLogging(t *testing.T) {
 	service := NewAuditService(&config.Config{})
-	ctx := context.WithValue(context.Background(), "request_id", "req-123")
+	ctx := context.WithValue(context.Background(), requestIDKey, "req-123")
 
 	req := models.VerificationRequest{
 		RPID:      "rp-001",
@@ -444,4 +451,4 @@ func TestMetadataCompleteness(t *testing.T) {
 	if !hasPhone {
 		t.Error("Expected phone identifier type")
 	}
-} 
+}

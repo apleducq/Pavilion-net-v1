@@ -9,10 +9,7 @@ import (
 )
 
 func TestNewResponseFormatterService(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -34,10 +31,7 @@ func TestNewResponseFormatterService(t *testing.T) {
 }
 
 func TestResponseFormatterService_FormatResponse_Success(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -109,11 +103,7 @@ func TestResponseFormatterService_FormatResponse_Success(t *testing.T) {
 }
 
 func TestResponseFormatterService_FormatResponse_WithExpiration(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-		ResponseExpirationHours:   24,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -144,10 +134,7 @@ func TestResponseFormatterService_FormatResponse_WithExpiration(t *testing.T) {
 }
 
 func TestResponseFormatterService_FormatErrorResponse(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -189,24 +176,21 @@ func TestResponseFormatterService_FormatErrorResponse(t *testing.T) {
 }
 
 func TestResponseValidator_ValidateFormattedResponse(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "req_123456",
-		Status:     "completed",
-		Verified:   true,
-		Confidence: 0.95,
-		Reason:     "Student ID found",
-		DPID:       "dp_university_123",
-		Timestamp:  "2025-08-02T07:00:00Z",
+		RequestID:      "req_123456",
+		Status:         "completed",
+		Verified:       true,
+		Confidence:     0.95,
+		Reason:         "Student ID found",
+		DPID:           "dp_university_123",
+		Timestamp:      "2025-08-02T07:00:00Z",
 		ProcessingTime: "150ms",
-		RequestHash: "hash_abc123",
-		ResponseHash: "hash_def456",
+		RequestHash:    "hash_abc123",
+		ResponseHash:   "hash_def456",
 	}
 
 	err := service.validator.ValidateFormattedResponse(formatted)
@@ -216,19 +200,16 @@ func TestResponseValidator_ValidateFormattedResponse(t *testing.T) {
 }
 
 func TestResponseValidator_ValidateFormattedResponse_Invalid(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "", // Missing request ID
+		RequestID:  "",               // Missing request ID
 		Status:     "invalid_status", // Invalid status
 		Verified:   true,
 		Confidence: 1.5, // Invalid confidence
-		DPID:       "", // Missing DP ID
+		DPID:       "",  // Missing DP ID
 		Timestamp:  "2025-08-02T07:00:00Z",
 	}
 
@@ -239,25 +220,22 @@ func TestResponseValidator_ValidateFormattedResponse_Invalid(t *testing.T) {
 }
 
 func TestResponseFormatterService_ConvertToVerificationResponse(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "req_123456",
-		Status:     "completed",
-		Verified:   true,
-		Confidence: 0.95,
-		Reason:     "Student ID found",
-		Evidence:   []string{"student_id_match", "enrollment_active"},
-		DPID:       "dp_university_123",
-		Timestamp:  "2025-08-02T07:00:00Z",
+		RequestID:      "req_123456",
+		Status:         "completed",
+		Verified:       true,
+		Confidence:     0.95,
+		Reason:         "Student ID found",
+		Evidence:       []string{"student_id_match", "enrollment_active"},
+		DPID:           "dp_university_123",
+		Timestamp:      "2025-08-02T07:00:00Z",
 		ProcessingTime: "150ms",
-		RequestHash: "hash_abc123",
-		ResponseHash: "hash_def456",
+		RequestHash:    "hash_abc123",
+		ResponseHash:   "hash_def456",
 		Metadata: map[string]interface{}{
 			"audit_id": "audit_123",
 		},
@@ -281,29 +259,26 @@ func TestResponseFormatterService_ConvertToVerificationResponse(t *testing.T) {
 		t.Error("Expected verification to be true")
 	}
 
-	if verificationResp.Confidence != 0.95 {
-		t.Errorf("Expected confidence 0.95, got %f", verificationResp.Confidence)
+	if verificationResp.ConfidenceScore != 0.95 {
+		t.Errorf("Expected confidence 0.95, got %f", verificationResp.ConfidenceScore)
 	}
 }
 
 func TestResponseFormatterService_GenerateResponseHash(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "req_123456",
-		Status:     "completed",
-		Verified:   true,
-		Confidence: 0.95,
-		Reason:     "Student ID found",
-		DPID:       "dp_university_123",
-		Timestamp:  "2025-08-02T07:00:00Z",
+		RequestID:      "req_123456",
+		Status:         "completed",
+		Verified:       true,
+		Confidence:     0.95,
+		Reason:         "Student ID found",
+		DPID:           "dp_university_123",
+		Timestamp:      "2025-08-02T07:00:00Z",
 		ProcessingTime: "150ms",
-		RequestHash: "hash_abc123",
+		RequestHash:    "hash_abc123",
 	}
 
 	hash := service.GenerateResponseHash(formatted)
@@ -320,23 +295,20 @@ func TestResponseFormatterService_GenerateResponseHash(t *testing.T) {
 }
 
 func TestResponseFormatterService_ValidateResponseIntegrity(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "req_123456",
-		Status:     "completed",
-		Verified:   true,
-		Confidence: 0.95,
-		Reason:     "Student ID found",
-		DPID:       "dp_university_123",
-		Timestamp:  "2025-08-02T07:00:00Z",
+		RequestID:      "req_123456",
+		Status:         "completed",
+		Verified:       true,
+		Confidence:     0.95,
+		Reason:         "Student ID found",
+		DPID:           "dp_university_123",
+		Timestamp:      "2025-08-02T07:00:00Z",
 		ProcessingTime: "150ms",
-		RequestHash: "hash_abc123",
+		RequestHash:    "hash_abc123",
 	}
 
 	// Generate response hash
@@ -349,24 +321,21 @@ func TestResponseFormatterService_ValidateResponseIntegrity(t *testing.T) {
 }
 
 func TestResponseFormatterService_ValidateResponseIntegrity_Invalid(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
 	formatted := &FormattedResponse{
-		RequestID:  "req_123456",
-		Status:     "completed",
-		Verified:   true,
-		Confidence: 0.95,
-		Reason:     "Student ID found",
-		DPID:       "dp_university_123",
-		Timestamp:  "2025-08-02T07:00:00Z",
+		RequestID:      "req_123456",
+		Status:         "completed",
+		Verified:       true,
+		Confidence:     0.95,
+		Reason:         "Student ID found",
+		DPID:           "dp_university_123",
+		Timestamp:      "2025-08-02T07:00:00Z",
 		ProcessingTime: "150ms",
-		RequestHash: "hash_abc123",
-		ResponseHash: "invalid_hash",
+		RequestHash:    "hash_abc123",
+		ResponseHash:   "invalid_hash",
 	}
 
 	err := service.ValidateResponseIntegrity(formatted)
@@ -376,10 +345,7 @@ func TestResponseFormatterService_ValidateResponseIntegrity_Invalid(t *testing.T
 }
 
 func TestResponseFormatterService_GetResponseTemplate(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -402,10 +368,7 @@ func TestResponseFormatterService_GetResponseTemplate(t *testing.T) {
 }
 
 func TestResponseFormatterService_GetResponseTemplate_NotFound(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -416,10 +379,7 @@ func TestResponseFormatterService_GetResponseTemplate_NotFound(t *testing.T) {
 }
 
 func TestResponseFormatterService_ListTemplates(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -444,10 +404,7 @@ func TestResponseFormatterService_ListTemplates(t *testing.T) {
 }
 
 func TestResponseFormatterService_GetFormattedResponseStats(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -467,10 +424,7 @@ func TestResponseFormatterService_GetFormattedResponseStats(t *testing.T) {
 }
 
 func TestResponseFormatterService_HealthCheck(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -483,10 +437,7 @@ func TestResponseFormatterService_HealthCheck(t *testing.T) {
 }
 
 func TestResponseFormatterService_InitializeTemplates(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -510,10 +461,7 @@ func TestResponseFormatterService_InitializeTemplates(t *testing.T) {
 }
 
 func TestResponseFormatterService_FormatResponse_WithMetadata(t *testing.T) {
-	cfg := &config.Config{
-		ResponseFormattingEnabled: true,
-		ResponseValidationEnabled:  true,
-	}
+	cfg := &config.Config{}
 
 	service := NewResponseFormatterService(cfg)
 
@@ -526,7 +474,7 @@ func TestResponseFormatterService_FormatResponse_WithMetadata(t *testing.T) {
 		DPID:       "dp_university_123",
 		Timestamp:  "2025-08-02T07:00:00Z",
 		Metadata: map[string]interface{}{
-			"audit_id": "audit_123",
+			"audit_id":   "audit_123",
 			"session_id": "session_456",
 		},
 	}
@@ -553,4 +501,4 @@ func TestResponseFormatterService_FormatResponse_WithMetadata(t *testing.T) {
 	if formatted.Metadata["session_id"] != "session_456" {
 		t.Errorf("Expected session_id 'session_456', got %v", formatted.Metadata["session_id"])
 	}
-} 
+}

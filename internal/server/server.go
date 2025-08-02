@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -9,6 +10,7 @@ import (
 	"github.com/pavilion-trust/core-broker/internal/config"
 	"github.com/pavilion-trust/core-broker/internal/handlers"
 	"github.com/pavilion-trust/core-broker/internal/middleware"
+	"github.com/pavilion-trust/core-broker/internal/services"
 )
 
 // Server represents the HTTP server
@@ -32,6 +34,13 @@ func New(cfg *config.Config) *Server {
 	verificationHandler := handlers.NewVerificationHandler(cfg)
 	healthHandler := handlers.NewHealthHandler(cfg)
 
+	// Create policy storage and handler
+	policyStorage, err := services.NewPolicyStorage(cfg)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to create policy storage: %v", err))
+	}
+	policyHandler := handlers.NewPolicyHandler(cfg, policyStorage)
+
 	// API routes
 	apiRouter := router.PathPrefix("/api/v1").Subrouter()
 	apiRouter.Use(middleware.Authentication(cfg))
@@ -41,6 +50,33 @@ func New(cfg *config.Config) *Server {
 	verificationRouter.Use(middleware.RequireRole("rp"))
 	verificationRouter.Use(middleware.ValidationMiddleware)
 	verificationRouter.HandleFunc("", verificationHandler.HandleVerification).Methods("POST")
+
+	// Policy endpoints (requires 'admin' role)
+	policyRouter := apiRouter.PathPrefix("/policies").Subrouter()
+	policyRouter.Use(middleware.RequireRole("admin"))
+
+	// Policy CRUD operations
+	policyRouter.HandleFunc("", policyHandler.HandleCreatePolicy).Methods("POST")
+	policyRouter.HandleFunc("", policyHandler.HandleListPolicies).Methods("GET")
+	policyRouter.HandleFunc("/{id}", policyHandler.HandleGetPolicy).Methods("GET")
+	policyRouter.HandleFunc("/{id}", policyHandler.HandleUpdatePolicy).Methods("PUT")
+	policyRouter.HandleFunc("/{id}", policyHandler.HandleDeletePolicy).Methods("DELETE")
+
+	// Policy evaluation
+	policyRouter.HandleFunc("/evaluate", policyHandler.HandleEvaluatePolicy).Methods("POST")
+
+	// Policy templates
+	policyRouter.HandleFunc("/templates", policyHandler.HandleCreateTemplate).Methods("POST")
+	policyRouter.HandleFunc("/templates", policyHandler.HandleListTemplates).Methods("GET")
+	policyRouter.HandleFunc("/templates/{id}", policyHandler.HandleGetTemplate).Methods("GET")
+
+	// Audit endpoints
+	policyRouter.HandleFunc("/audit", policyHandler.HandleGetAuditLogs).Methods("GET")
+	policyRouter.HandleFunc("/audit/{request_id}", policyHandler.HandleGetAuditLog).Methods("GET")
+	policyRouter.HandleFunc("/audit/stats", policyHandler.HandleGetAuditStats).Methods("GET")
+
+	// Health endpoint
+	policyRouter.HandleFunc("/health", policyHandler.HandleHealth).Methods("GET")
 
 	// Health check endpoint (no authentication required)
 	router.HandleFunc("/health", healthHandler.HandleHealth).Methods("GET")
@@ -106,4 +142,4 @@ func NewAPIGateway(cfg *config.Config) *Server {
 		Server: srv,
 		config: cfg,
 	}
-} 
+}

@@ -3,7 +3,6 @@ package config
 import (
 	"os"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -29,7 +28,7 @@ type Config struct {
 	CoreBrokerURL  string
 
 	// Authentication
-	KeycloakURL  string
+	KeycloakURL   string
 	KeycloakRealm string
 
 	// Policy Service
@@ -37,24 +36,25 @@ type Config struct {
 	OPATimeout time.Duration
 
 	// DP Communication
-	DPConnectorURL string
+	DPConnectorURL   string
 	DPConnectorToken string
-	DPTimeout      time.Duration
+	DPTimeout        time.Duration
 
 	// Cache Configuration
-	RedisURL   string
-	CacheTTL   time.Duration
-	Redis      RedisConfig
+	RedisURL string
+	CacheTTL time.Duration
+	Redis    RedisConfig
 
-	// Audit Configuration
+	// Database Configuration
+	DatabaseURL    string
 	AuditDBURL     string
 	AuditBatchSize int
 
 	// Privacy/PPRL Configuration
-	BloomFilterSize     int
-	BloomFilterHashCount int
+	BloomFilterSize              int
+	BloomFilterHashCount         int
 	BloomFilterFalsePositiveRate float64
-	PhoneticEncodingEnabled bool
+	PhoneticEncodingEnabled      bool
 
 	// Logging
 	LogLevel string
@@ -82,9 +82,9 @@ func Load() (*Config, error) {
 		OPATimeout: getDurationEnv("OPA_TIMEOUT", 5*time.Second),
 
 		// DP Communication
-		DPConnectorURL: getEnv("DP_CONNECTOR_URL", "http://dp-connector:8080"),
+		DPConnectorURL:   getEnv("DP_CONNECTOR_URL", "http://dp-connector:8080"),
 		DPConnectorToken: getEnv("DP_CONNECTOR_TOKEN", ""), // Default empty string
-		DPTimeout:      getDurationEnv("DP_TIMEOUT", 30*time.Second),
+		DPTimeout:        getDurationEnv("DP_TIMEOUT", 30*time.Second),
 
 		// Cache Configuration
 		RedisURL: getEnv("REDIS_URL", "redis://redis:6379"),
@@ -97,15 +97,16 @@ func Load() (*Config, error) {
 			TTL:      getIntEnv("REDIS_TTL", int(90*24*3600)), // 90 days in seconds
 		},
 
-		// Audit Configuration
+		// Database Configuration
+		DatabaseURL:    getEnv("DATABASE_URL", "postgres://pavilion:pavilion@localhost:5432/pavilion?sslmode=disable"),
 		AuditDBURL:     getEnv("AUDIT_DB_URL", "postgres://audit:5432"),
 		AuditBatchSize: getIntEnv("AUDIT_BATCH_SIZE", 100),
 
 		// Privacy/PPRL Configuration
-		BloomFilterSize:     getIntEnv("BLOOM_FILTER_SIZE", 1000000),
-		BloomFilterHashCount: getIntEnv("BLOOM_FILTER_HASH_COUNT", 7),
+		BloomFilterSize:              getIntEnv("BLOOM_FILTER_SIZE", 1000000),
+		BloomFilterHashCount:         getIntEnv("BLOOM_FILTER_HASH_COUNT", 7),
 		BloomFilterFalsePositiveRate: getFloat64Env("BLOOM_FILTER_FALSE_POSITIVE_RATE", 0.01),
-		PhoneticEncodingEnabled: getBoolEnv("PHONETIC_ENCODING_ENABLED", false),
+		PhoneticEncodingEnabled:      getBoolEnv("PHONETIC_ENCODING_ENABLED", false),
 
 		// Logging
 		LogLevel: getEnv("LOG_LEVEL", "info"),
@@ -160,4 +161,4 @@ func getBoolEnv(key string, defaultValue bool) bool {
 		}
 	}
 	return defaultValue
-} 
+}

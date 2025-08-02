@@ -59,29 +59,29 @@ As a system administrator, I want to connect to data providers so that I can ret
 #### T-301: Implement connection manager
 **Effort**: M (3 days)
 **Dependencies**: None
-- [ ] Design connection management structure
-- [ ] Implement connection pooling
-- [ ] Add connection health monitoring
-- [ ] Implement connection load balancing
-- [ ] Add connection timeout handling
+- [x] Design connection management structure
+- [x] Implement connection pooling
+- [x] Add connection health monitoring
+- [x] Implement connection load balancing
+- [x] Add connection timeout handling
 
 #### T-302: Add authentication support
 **Effort**: M (3 days)
 **Dependencies**: T-301
-- [ ] Implement API key authentication
-- [ ] Add OAuth 2.0 support
-- [ ] Implement mTLS authentication
-- [ ] Add JWT token validation
-- [ ] Test authentication flows
+- [x] Implement API key authentication
+- [x] Add OAuth 2.0 support
+- [x] Implement mTLS authentication
+- [x] Add JWT token validation
+- [x] Test authentication flows
 
 #### T-303: Create integration adapters
 **Effort**: L (5 days)
 **Dependencies**: T-302
-- [ ] Implement REST API adapter
-- [ ] Add GraphQL adapter
-- [ ] Implement gRPC adapter
-- [ ] Add WebSocket support
-- [ ] Test adapter functionality
+- [x] Implement REST API adapter
+- [x] Add GraphQL adapter
+- [x] Implement gRPC adapter
+- [x] Add WebSocket support
+- [x] Test adapter functionality
 
 ### US-302: Credential Issuance
 **Epic**: E-302

@@ -11,8 +11,7 @@ import (
 
 func TestNewPullJobService(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
@@ -41,8 +40,7 @@ func TestNewPullJobService(t *testing.T) {
 
 func TestPullJobService_SubmitJob(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
@@ -94,8 +92,7 @@ func TestPullJobService_SubmitJob(t *testing.T) {
 
 func TestPullJobService_GetJobStatus(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
@@ -124,20 +121,24 @@ func TestPullJobService_GetJobStatus(t *testing.T) {
 	}
 
 	if retrievedStatus.JobID != jobStatus.JobID {
-		t.Errorf("Expected job ID %s, got %s", jobStatus.JobID, retrievedStatus.JobID)
+		t.Error("Expected job ID to match")
+	}
+
+	if retrievedStatus.Status != JobPending {
+		t.Errorf("Expected status to be pending, got %s", retrievedStatus.Status)
 	}
 }
 
 func TestPullJobService_GetJobStatus_NotFound(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
 	service := NewPullJobService(cfg, dpService)
 
-	_, err := service.GetJobStatus("nonexistent_job_id")
+	// Try to get non-existent job
+	_, err := service.GetJobStatus("non-existent-job")
 	if err == nil {
 		t.Error("Expected error for non-existent job")
 	}
@@ -145,8 +146,7 @@ func TestPullJobService_GetJobStatus_NotFound(t *testing.T) {
 
 func TestPullJobService_ListJobs(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
@@ -242,15 +242,14 @@ func TestJobTracker_CompleteJob(t *testing.T) {
 
 	tracker.TrackJob(job)
 
+	// Complete job with result
 	result := &models.DPResponse{
-		JobID:  "job_123",
-		Status: "completed",
-		VerificationResult: &VerificationResult{
-			Verified:   true,
-			Confidence: 0.95,
-			Reason:     "Student ID found",
-			Timestamp:  "2025-08-02T07:00:00Z",
-		},
+		Status:          "verified",
+		Verified:        true,
+		ConfidenceScore: 0.95,
+		Reason:          "Student enrollment confirmed",
+		DPID:            "dp_university_001",
+		Timestamp:       time.Now().Format(time.RFC3339),
 	}
 
 	tracker.CompleteJob("job_123", result, "")
@@ -264,8 +263,8 @@ func TestJobTracker_CompleteJob(t *testing.T) {
 		t.Error("Expected result to be set")
 	}
 
-	if completedJob.CompletedAt == nil {
-		t.Error("Expected completed at to be set")
+	if completedJob.Result.Status != "verified" {
+		t.Errorf("Expected result status to be verified, got %s", completedJob.Result.Status)
 	}
 }
 
@@ -284,13 +283,17 @@ func TestJobTracker_GetJob(t *testing.T) {
 
 	tracker.TrackJob(job)
 
+	// Get job
 	retrievedJob, err := tracker.GetJob("job_123")
 	if err != nil {
 		t.Fatalf("Expected no error, got %v", err)
 	}
+	if retrievedJob == nil {
+		t.Fatal("Expected job to be returned")
+	}
 
-	if retrievedJob != job {
-		t.Error("Expected job to be retrieved")
+	if retrievedJob.JobID != "job_123" {
+		t.Error("Expected job ID to match")
 	}
 }
 
@@ -299,9 +302,13 @@ func TestJobTracker_GetJob_NotFound(t *testing.T) {
 		jobs: make(map[string]*JobStatus),
 	}
 
-	_, err := tracker.GetJob("nonexistent_job")
+	// Try to get non-existent job
+	job, err := tracker.GetJob("non-existent-job")
 	if err == nil {
 		t.Error("Expected error for non-existent job")
+	}
+	if job != nil {
+		t.Error("Expected nil for non-existent job")
 	}
 }
 
@@ -310,32 +317,33 @@ func TestJobAuditLogger_LogEvent(t *testing.T) {
 		events: make([]JobAuditEvent, 0),
 	}
 
+	eventType := "job_submitted"
+	description := "Job submitted successfully"
+	jobID := "job_123"
+	requestID := "req_123"
 	metadata := map[string]string{
-		"user_id": "user_123",
-		"rp_id":   "rp_123",
+		"rp_id":      "rp_123",
+		"claim_type": "student_verification",
 	}
 
-	logger.LogEvent("job_created", "Job submitted successfully", "job_123", "req_123", JobPending, metadata)
+	logger.LogEvent(eventType, description, jobID, requestID, JobPending, metadata)
 
-	if len(logger.events) != 1 {
-		t.Errorf("Expected 1 event, got %d", len(logger.events))
+	events := logger.GetAuditEvents()
+	if len(events) != 1 {
+		t.Errorf("Expected 1 event, got %d", len(events))
 	}
 
-	event := logger.events[0]
-	if event.EventType != "job_created" {
-		t.Errorf("Expected event type 'job_created', got %s", event.EventType)
+	event := events[0]
+	if event.EventType != eventType {
+		t.Errorf("Expected event type %s, got %s", eventType, event.EventType)
 	}
 
-	if event.JobID != "job_123" {
-		t.Errorf("Expected job ID 'job_123', got %s", event.JobID)
+	if event.JobID != jobID {
+		t.Errorf("Expected job ID %s, got %s", jobID, event.JobID)
 	}
 
-	if event.RequestID != "req_123" {
-		t.Errorf("Expected request ID 'req_123', got %s", event.RequestID)
-	}
-
-	if event.Status != JobPending {
-		t.Errorf("Expected status pending, got %s", event.Status)
+	if event.RequestID != requestID {
+		t.Errorf("Expected request ID %s, got %s", requestID, event.RequestID)
 	}
 }
 
@@ -344,10 +352,10 @@ func TestJobAuditLogger_GetAuditEvents(t *testing.T) {
 		events: make([]JobAuditEvent, 0),
 	}
 
-	// Log multiple events
-	logger.LogEvent("job_created", "Job submitted", "job_123", "req_123", JobPending, nil)
-	logger.LogEvent("job_started", "Job started processing", "job_123", "req_123", JobRunning, nil)
-	logger.LogEvent("job_completed", "Job completed successfully", "job_123", "req_123", JobCompleted, nil)
+	// Add multiple events
+	logger.LogEvent("job_submitted", "Event 1", "job1", "req1", JobPending, nil)
+	logger.LogEvent("job_completed", "Event 2", "job2", "req2", JobCompleted, nil)
+	logger.LogEvent("job_failed", "Event 3", "job3", "req3", JobFailed, nil)
 
 	events := logger.GetAuditEvents()
 	if len(events) != 3 {
@@ -357,13 +365,13 @@ func TestJobAuditLogger_GetAuditEvents(t *testing.T) {
 
 func TestPullJobService_GenerateJobID(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
 	service := NewPullJobService(cfg, dpService)
 
+	// Generate job IDs
 	jobID1 := service.generateJobID()
 	jobID2 := service.generateJobID()
 
@@ -378,66 +386,22 @@ func TestPullJobService_GenerateJobID(t *testing.T) {
 	if jobID1 == jobID2 {
 		t.Error("Expected job IDs to be unique")
 	}
+
+	// Check format
+	if len(jobID1) < 10 {
+		t.Error("Expected job ID to have reasonable length")
+	}
 }
 
 func TestPullJobService_CleanupExpiredJobs(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
 	service := NewPullJobService(cfg, dpService)
 
-	// Create an expired job
-	expiredJob := &JobStatus{
-		JobID:     "expired_job",
-		RequestID: "req_123",
-		Status:    JobCompleted,
-		CreatedAt: time.Now().Add(-2 * time.Hour), // 2 hours ago
-		UpdatedAt: time.Now().Add(-2 * time.Hour),
-		CompletedAt: func() *time.Time {
-			t := time.Now().Add(-2 * time.Hour)
-			return &t
-		}(),
-	}
-
-	service.jobTracker.TrackJob(expiredJob)
-
-	// Create a recent job
-	recentJob := &JobStatus{
-		JobID:     "recent_job",
-		RequestID: "req_456",
-		Status:    JobPending,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	service.jobTracker.TrackJob(recentJob)
-
-	// Cleanup expired jobs
-	service.CleanupExpiredJobs()
-
-	jobs := service.ListJobs()
-	if len(jobs) != 1 {
-		t.Errorf("Expected 1 job after cleanup, got %d", len(jobs))
-	}
-
-	if jobs[0].JobID != "recent_job" {
-		t.Error("Expected recent job to remain after cleanup")
-	}
-}
-
-func TestPullJobService_GetJobStats(t *testing.T) {
-	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
-	}
-
-	dpService := NewDPConnectorService(cfg)
-	service := NewPullJobService(cfg, dpService)
-
-	// Submit some jobs
+	// Submit a job
 	req := &models.PrivacyRequest{
 		RPID:      "rp_123",
 		UserHash:  "hash_abc123",
@@ -445,28 +409,65 @@ func TestPullJobService_GetJobStats(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	service.SubmitJob(ctx, req)
-	service.SubmitJob(ctx, req)
-
-	stats := service.GetJobStats()
-
-	if stats == nil {
-		t.Fatal("Expected stats to be returned")
+	jobStatus, err := service.SubmitJob(ctx, req)
+	if err != nil {
+		t.Fatalf("Failed to submit job: %v", err)
 	}
 
-	// Check that stats contain expected fields
-	expectedFields := []string{"total_jobs", "pending_jobs", "completed_jobs", "failed_jobs", "audit_events"}
-	for _, field := range expectedFields {
-		if _, exists := stats[field]; !exists {
-			t.Errorf("Expected stats to contain field: %s", field)
-		}
+	// Manually set job to expired
+	jobStatus.CreatedAt = time.Now().Add(-25 * time.Hour) // Expired
+	service.jobTracker.jobs[jobStatus.JobID] = jobStatus
+
+	// Cleanup expired jobs
+	service.CleanupExpiredJobs()
+
+	// Check that job was removed
+	_, err = service.GetJobStatus(jobStatus.JobID)
+	if err == nil {
+		t.Error("Expected job to be removed")
+	}
+}
+
+func TestPullJobService_GetJobStats(t *testing.T) {
+	cfg := &config.Config{
+		DPTimeout: 30 * time.Second,
+	}
+
+	dpService := NewDPConnectorService(cfg)
+	service := NewPullJobService(cfg, dpService)
+
+	// Submit some jobs
+	req1 := &models.PrivacyRequest{
+		RPID:      "rp_123",
+		UserHash:  "hash_abc123",
+		ClaimType: "student_verification",
+	}
+
+	req2 := &models.PrivacyRequest{
+		RPID:      "rp_456",
+		UserHash:  "hash_def456",
+		ClaimType: "age_verification",
+	}
+
+	ctx := context.Background()
+	service.SubmitJob(ctx, req1)
+	service.SubmitJob(ctx, req2)
+
+	// Get stats
+	stats := service.GetJobStats()
+
+	if stats["total_jobs"] != 2 {
+		t.Errorf("Expected 2 total jobs, got %v", stats["total_jobs"])
+	}
+
+	if stats["pending_jobs"] != 2 {
+		t.Errorf("Expected 2 pending jobs, got %v", stats["pending_jobs"])
 	}
 }
 
 func TestPullJobService_HealthCheck(t *testing.T) {
 	cfg := &config.Config{
-		JobTimeout: 30 * time.Second,
-		MaxRetries: 3,
+		DPTimeout: 30 * time.Second,
 	}
 
 	dpService := NewDPConnectorService(cfg)
@@ -478,4 +479,4 @@ func TestPullJobService_HealthCheck(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-} 
+}

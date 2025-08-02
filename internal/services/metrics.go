@@ -13,23 +13,23 @@ import (
 type MetricsService struct {
 	config *config.Config
 	mu     sync.RWMutex
-	
+
 	// Request metrics
-	requestCount     int64
-	requestLatency   []time.Duration
-	errorCount       int64
-	
+	requestCount   int64
+	requestLatency []time.Duration
+	errorCount     int64
+
 	// Cache metrics
-	cacheHits        int64
-	cacheMisses      int64
-	cacheErrors      int64
-	
+	cacheHits   int64
+	cacheMisses int64
+	cacheErrors int64
+
 	// Service-specific metrics
 	dpConnectorRequests int64
 	dpConnectorErrors   int64
 	auditLogEntries     int64
 	policyDecisions     int64
-	
+
 	// Performance tracking
 	startTime time.Time
 	lastReset time.Time
@@ -46,12 +46,12 @@ const (
 
 // Metric represents a single metric
 type Metric struct {
-	Name   string                 `json:"name"`
-	Type   MetricType             `json:"type"`
-	Value  float64                `json:"value"`
-	Labels map[string]string      `json:"labels,omitempty"`
-	Help   string                 `json:"help,omitempty"`
-	Time   time.Time              `json:"timestamp"`
+	Name   string            `json:"name"`
+	Type   MetricType        `json:"type"`
+	Value  float64           `json:"value"`
+	Labels map[string]string `json:"labels,omitempty"`
+	Help   string            `json:"help,omitempty"`
+	Time   time.Time         `json:"timestamp"`
 }
 
 // AlertThreshold represents an alerting threshold
@@ -76,10 +76,10 @@ func NewMetricsService(cfg *config.Config) *MetricsService {
 func (s *MetricsService) RecordRequest(latency time.Duration) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.requestCount++
 	s.requestLatency = append(s.requestLatency, latency)
-	
+
 	// Keep only last 1000 latency measurements
 	if len(s.requestLatency) > 1000 {
 		s.requestLatency = s.requestLatency[1:]
@@ -90,7 +90,7 @@ func (s *MetricsService) RecordRequest(latency time.Duration) {
 func (s *MetricsService) RecordError() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.errorCount++
 }
 
@@ -98,7 +98,7 @@ func (s *MetricsService) RecordError() {
 func (s *MetricsService) RecordCacheHit() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.cacheHits++
 }
 
@@ -106,7 +106,7 @@ func (s *MetricsService) RecordCacheHit() {
 func (s *MetricsService) RecordCacheMiss() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.cacheMisses++
 }
 
@@ -114,7 +114,7 @@ func (s *MetricsService) RecordCacheMiss() {
 func (s *MetricsService) RecordCacheError() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.cacheErrors++
 }
 
@@ -122,7 +122,7 @@ func (s *MetricsService) RecordCacheError() {
 func (s *MetricsService) RecordDPConnectorRequest() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.dpConnectorRequests++
 }
 
@@ -130,7 +130,7 @@ func (s *MetricsService) RecordDPConnectorRequest() {
 func (s *MetricsService) RecordDPConnectorError() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.dpConnectorErrors++
 }
 
@@ -138,7 +138,7 @@ func (s *MetricsService) RecordDPConnectorError() {
 func (s *MetricsService) RecordAuditLogEntry() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.auditLogEntries++
 }
 
@@ -146,7 +146,7 @@ func (s *MetricsService) RecordAuditLogEntry() {
 func (s *MetricsService) RecordPolicyDecision() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.policyDecisions++
 }
 
@@ -154,146 +154,146 @@ func (s *MetricsService) RecordPolicyDecision() {
 func (s *MetricsService) GetMetrics() []Metric {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	now := time.Now()
 	uptime := now.Sub(s.startTime)
-	
+
 	var metrics []Metric
-	
+
 	// Request metrics
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_requests_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.requestCount),
-		Help:   "Total number of requests",
-		Time:   now,
+		Name:  "core_broker_requests_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.requestCount),
+		Help:  "Total number of requests",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_errors_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.errorCount),
-		Help:   "Total number of errors",
-		Time:   now,
+		Name:  "core_broker_errors_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.errorCount),
+		Help:  "Total number of errors",
+		Time:  now,
 	})
-	
+
 	// Error rate
 	errorRate := 0.0
 	if s.requestCount > 0 {
 		errorRate = float64(s.errorCount) / float64(s.requestCount) * 100.0
 	}
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_error_rate",
-		Type:   MetricTypeGauge,
-		Value:  errorRate,
-		Help:   "Error rate as percentage",
-		Time:   now,
+		Name:  "core_broker_error_rate",
+		Type:  MetricTypeGauge,
+		Value: errorRate,
+		Help:  "Error rate as percentage",
+		Time:  now,
 	})
-	
+
 	// Latency metrics
 	if len(s.requestLatency) > 0 {
 		avgLatency := s.calculateAverageLatency()
 		metrics = append(metrics, Metric{
-			Name:   "core_broker_request_latency_avg",
-			Type:   MetricTypeGauge,
-			Value:  avgLatency.Seconds(),
-			Help:   "Average request latency in seconds",
-			Time:   now,
+			Name:  "core_broker_request_latency_avg",
+			Type:  MetricTypeGauge,
+			Value: avgLatency.Seconds(),
+			Help:  "Average request latency in seconds",
+			Time:  now,
 		})
-		
+
 		maxLatency := s.calculateMaxLatency()
 		metrics = append(metrics, Metric{
-			Name:   "core_broker_request_latency_max",
-			Type:   MetricTypeGauge,
-			Value:  maxLatency.Seconds(),
-			Help:   "Maximum request latency in seconds",
-			Time:   now,
+			Name:  "core_broker_request_latency_max",
+			Type:  MetricTypeGauge,
+			Value: maxLatency.Seconds(),
+			Help:  "Maximum request latency in seconds",
+			Time:  now,
 		})
 	}
-	
+
 	// Cache metrics
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_cache_hits_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.cacheHits),
-		Help:   "Total cache hits",
-		Time:   now,
+		Name:  "core_broker_cache_hits_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.cacheHits),
+		Help:  "Total cache hits",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_cache_misses_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.cacheMisses),
-		Help:   "Total cache misses",
-		Time:   now,
+		Name:  "core_broker_cache_misses_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.cacheMisses),
+		Help:  "Total cache misses",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_cache_errors_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.cacheErrors),
-		Help:   "Total cache errors",
-		Time:   now,
+		Name:  "core_broker_cache_errors_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.cacheErrors),
+		Help:  "Total cache errors",
+		Time:  now,
 	})
-	
+
 	// Cache hit rate
 	cacheHitRate := 0.0
 	totalCacheRequests := s.cacheHits + s.cacheMisses
 	if totalCacheRequests > 0 {
 		cacheHitRate = float64(s.cacheHits) / float64(totalCacheRequests) * 100.0
 	}
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_cache_hit_rate",
-		Type:   MetricTypeGauge,
-		Value:  cacheHitRate,
-		Help:   "Cache hit rate as percentage",
-		Time:   now,
+		Name:  "core_broker_cache_hit_rate",
+		Type:  MetricTypeGauge,
+		Value: cacheHitRate,
+		Help:  "Cache hit rate as percentage",
+		Time:  now,
 	})
-	
+
 	// Service-specific metrics
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_dp_connector_requests_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.dpConnectorRequests),
-		Help:   "Total DP connector requests",
-		Time:   now,
+		Name:  "core_broker_dp_connector_requests_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.dpConnectorRequests),
+		Help:  "Total DP connector requests",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_dp_connector_errors_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.dpConnectorErrors),
-		Help:   "Total DP connector errors",
-		Time:   now,
+		Name:  "core_broker_dp_connector_errors_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.dpConnectorErrors),
+		Help:  "Total DP connector errors",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_audit_log_entries_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.auditLogEntries),
-		Help:   "Total audit log entries",
-		Time:   now,
+		Name:  "core_broker_audit_log_entries_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.auditLogEntries),
+		Help:  "Total audit log entries",
+		Time:  now,
 	})
-	
+
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_policy_decisions_total",
-		Type:   MetricTypeCounter,
-		Value:  float64(s.policyDecisions),
-		Help:   "Total policy decisions",
-		Time:   now,
+		Name:  "core_broker_policy_decisions_total",
+		Type:  MetricTypeCounter,
+		Value: float64(s.policyDecisions),
+		Help:  "Total policy decisions",
+		Time:  now,
 	})
-	
+
 	// Uptime metric
 	metrics = append(metrics, Metric{
-		Name:   "core_broker_uptime_seconds",
-		Type:   MetricTypeGauge,
-		Value:  uptime.Seconds(),
-		Help:   "Service uptime in seconds",
-		Time:   now,
+		Name:  "core_broker_uptime_seconds",
+		Type:  MetricTypeGauge,
+		Value: uptime.Seconds(),
+		Help:  "Service uptime in seconds",
+		Time:  now,
 	})
-	
+
 	return metrics
 }
 
@@ -301,16 +301,16 @@ func (s *MetricsService) GetMetrics() []Metric {
 func (s *MetricsService) GetPrometheusMetrics() string {
 	metrics := s.GetMetrics()
 	var prometheus string
-	
+
 	for _, metric := range metrics {
 		// Add help text
 		if metric.Help != "" {
 			prometheus += fmt.Sprintf("# HELP %s %s\n", metric.Name, metric.Help)
 		}
-		
+
 		// Add type
 		prometheus += fmt.Sprintf("# TYPE %s %s\n", metric.Name, metric.Type)
-		
+
 		// Add metric value
 		labels := ""
 		if len(metric.Labels) > 0 {
@@ -320,10 +320,10 @@ func (s *MetricsService) GetPrometheusMetrics() string {
 			}
 			labels = fmt.Sprintf("{%s}", fmt.Sprintf("%s", labelPairs))
 		}
-		
+
 		prometheus += fmt.Sprintf("%s%s %f\n", metric.Name, labels, metric.Value)
 	}
-	
+
 	return prometheus
 }
 
@@ -331,7 +331,7 @@ func (s *MetricsService) GetPrometheusMetrics() string {
 func (s *MetricsService) CheckAlertThresholds() []Alert {
 	metrics := s.GetMetrics()
 	var alerts []Alert
-	
+
 	// Define alert thresholds
 	thresholds := []AlertThreshold{
 		{
@@ -363,7 +363,7 @@ func (s *MetricsService) CheckAlertThresholds() []Alert {
 			Message:    "Average request latency is above 2 seconds",
 		},
 	}
-	
+
 	// Check each threshold
 	for _, threshold := range thresholds {
 		for _, metric := range metrics {
@@ -382,7 +382,7 @@ func (s *MetricsService) CheckAlertThresholds() []Alert {
 			}
 		}
 	}
-	
+
 	return alerts
 }
 
@@ -397,7 +397,7 @@ type Alert struct {
 }
 
 // evaluateThreshold evaluates if a metric value meets the threshold condition
-func (s *MetricsService) evaluateThreshold(value, operator string, threshold float64) bool {
+func (s *MetricsService) evaluateThreshold(value float64, operator string, threshold float64) bool {
 	switch operator {
 	case "gt":
 		return value > threshold
@@ -419,12 +419,12 @@ func (s *MetricsService) calculateAverageLatency() time.Duration {
 	if len(s.requestLatency) == 0 {
 		return 0
 	}
-	
+
 	var total time.Duration
 	for _, latency := range s.requestLatency {
 		total += latency
 	}
-	
+
 	return total / time.Duration(len(s.requestLatency))
 }
 
@@ -433,14 +433,14 @@ func (s *MetricsService) calculateMaxLatency() time.Duration {
 	if len(s.requestLatency) == 0 {
 		return 0
 	}
-	
+
 	max := s.requestLatency[0]
 	for _, latency := range s.requestLatency {
 		if latency > max {
 			max = latency
 		}
 	}
-	
+
 	return max
 }
 
@@ -448,7 +448,7 @@ func (s *MetricsService) calculateMaxLatency() time.Duration {
 func (s *MetricsService) ResetMetrics() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	
+
 	s.requestCount = 0
 	s.errorCount = 0
 	s.cacheHits = 0
@@ -466,19 +466,19 @@ func (s *MetricsService) ResetMetrics() {
 func (s *MetricsService) GetMetricsSummary() map[string]interface{} {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	
+
 	uptime := time.Since(s.startTime)
 	errorRate := 0.0
 	if s.requestCount > 0 {
 		errorRate = float64(s.errorCount) / float64(s.requestCount) * 100.0
 	}
-	
+
 	cacheHitRate := 0.0
 	totalCacheRequests := s.cacheHits + s.cacheMisses
 	if totalCacheRequests > 0 {
 		cacheHitRate = float64(s.cacheHits) / float64(totalCacheRequests) * 100.0
 	}
-	
+
 	return map[string]interface{}{
 		"uptime":           uptime.String(),
 		"request_count":    s.requestCount,
@@ -500,4 +500,4 @@ func (s *MetricsService) HealthCheck(ctx context.Context) error {
 	// Basic health check - metrics service is always healthy
 	// as it's just in-memory counters
 	return nil
-} 
+}

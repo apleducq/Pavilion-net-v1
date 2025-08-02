@@ -159,7 +159,7 @@ func TestAPIGatewayHandler_HandleHealth_CoreBrokerUnreachable(t *testing.T) {
 		t.Errorf("Expected status 503, got %d", w.Code)
 	}
 
-	expectedBody := "Core Broker unreachable"
+	expectedBody := "Core Broker unreachable\n"
 	if w.Body.String() != expectedBody {
 		t.Errorf("Expected body %s, got %s", expectedBody, w.Body.String())
 	}
@@ -178,4 +178,4 @@ func TestNewAPIGatewayHandler_InvalidURL(t *testing.T) {
 	}()
 
 	NewAPIGatewayHandler(cfg)
-} 
+}

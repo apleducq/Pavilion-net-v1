@@ -111,7 +111,7 @@ func (s *CacheService) CacheVerificationResult(req models.VerificationRequest, r
 		return
 	}
 
-	fmt.Printf("CACHE: Cached verification result for RP %s, User %s, Claim %s (TTL: 90 days)\n", 
+	fmt.Printf("CACHE: Cached verification result for RP %s, User %s, Claim %s (TTL: 90 days)\n",
 		req.RPID, req.UserID, req.ClaimType)
 }
 
@@ -165,12 +165,12 @@ func (s *CacheService) GetCacheStats() (map[string]interface{}, error) {
 	stats := make(map[string]interface{})
 	stats["info"] = info
 	stats["dbsize"], _ = s.client.DBSize(ctx).Result()
-	
+
 	// Add cache hit/miss metrics (T-020)
 	stats["hit_count"] = s.hitCount
 	stats["miss_count"] = s.missCount
 	stats["error_count"] = s.errorCount
-	
+
 	// Calculate hit rate
 	totalRequests := s.hitCount + s.missCount
 	if totalRequests > 0 {
@@ -178,7 +178,7 @@ func (s *CacheService) GetCacheStats() (map[string]interface{}, error) {
 	} else {
 		stats["hit_rate"] = 0.0
 	}
-	
+
 	return stats, nil
 }
 
@@ -186,15 +186,15 @@ func (s *CacheService) GetCacheStats() (map[string]interface{}, error) {
 func (s *CacheService) InvalidateVerificationCache(req models.VerificationRequest) error {
 	ctx := context.Background()
 	key := s.generateCacheKey(req)
-	
+
 	err := s.client.Del(ctx, key).Err()
 	if err != nil {
 		fmt.Printf("CACHE ERROR: Failed to invalidate cache for key %s: %v\n", key, err)
 		s.errorCount++
 		return err
 	}
-	
-	fmt.Printf("CACHE: Invalidated verification result for RP %s, User %s, Claim %s\n", 
+
+	fmt.Printf("CACHE: Invalidated verification result for RP %s, User %s, Claim %s\n",
 		req.RPID, req.UserID, req.ClaimType)
 	return nil
 }
@@ -202,19 +202,19 @@ func (s *CacheService) InvalidateVerificationCache(req models.VerificationReques
 // InvalidateCacheByPattern invalidates cache entries matching a pattern
 func (s *CacheService) InvalidateCacheByPattern(pattern string) error {
 	ctx := context.Background()
-	
+
 	// Scan for keys matching pattern
 	iter := s.client.Scan(ctx, 0, pattern, 0).Iterator()
 	var keys []string
-	
+
 	for iter.Next(ctx) {
 		keys = append(keys, iter.Val())
 	}
-	
+
 	if err := iter.Err(); err != nil {
 		return err
 	}
-	
+
 	// Delete all matching keys
 	if len(keys) > 0 {
 		err := s.client.Del(ctx, keys...).Err()
@@ -223,10 +223,10 @@ func (s *CacheService) InvalidateCacheByPattern(pattern string) error {
 			s.errorCount++
 			return err
 		}
-		
+
 		fmt.Printf("CACHE: Invalidated %d cache entries matching pattern %s\n", len(keys), pattern)
 	}
-	
+
 	return nil
 }
 
@@ -237,13 +237,13 @@ func (s *CacheService) GetCacheMetrics() map[string]interface{} {
 	if totalRequests > 0 {
 		hitRate = float64(s.hitCount) / float64(totalRequests)
 	}
-	
+
 	return map[string]interface{}{
-		"hit_count":     s.hitCount,
-		"miss_count":    s.missCount,
-		"error_count":   s.errorCount,
+		"hit_count":      s.hitCount,
+		"miss_count":     s.missCount,
+		"error_count":    s.errorCount,
 		"total_requests": totalRequests,
-		"hit_rate":      hitRate,
+		"hit_rate":       hitRate,
 	}
 }
 
@@ -252,27 +252,27 @@ func (s *CacheService) HealthCheck(ctx context.Context) error {
 	// Test Redis connection
 	_, err := s.client.Ping(ctx).Result()
 	if err != nil {
-		return fmt.Errorf("Redis connection failed: %v", err)
+		return fmt.Errorf("redis connection failed: %v", err)
 	}
 
 	// Test basic operations
 	testKey := "health_check_test"
 	testValue := "test_value"
-	
+
 	// Set test value
 	err = s.client.Set(ctx, testKey, testValue, time.Minute).Err()
 	if err != nil {
-		return fmt.Errorf("Redis set operation failed: %v", err)
+		return fmt.Errorf("redis set operation failed: %v", err)
 	}
 
 	// Get test value
 	result, err := s.client.Get(ctx, testKey).Result()
 	if err != nil {
-		return fmt.Errorf("Redis get operation failed: %v", err)
+		return fmt.Errorf("redis get operation failed: %v", err)
 	}
 
 	if result != testValue {
-		return fmt.Errorf("Redis get operation returned wrong value")
+		return fmt.Errorf("redis get operation returned wrong value")
 	}
 
 	// Clean up test key
@@ -284,4 +284,4 @@ func (s *CacheService) HealthCheck(ctx context.Context) error {
 // Close closes the Redis connection
 func (s *CacheService) Close() error {
 	return s.client.Close()
-} 
+}

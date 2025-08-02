@@ -64,7 +64,7 @@ func TestPolicyCache(t *testing.T) {
 	}
 }
 
-func TestGenerateCacheKey(t *testing.T) {
+func TestPolicyService_GenerateCacheKey(t *testing.T) {
 	service := &PolicyService{}
 
 	req := models.VerificationRequest{
@@ -97,7 +97,7 @@ func TestGetPolicyReason(t *testing.T) {
 	}
 }
 
-func TestGetCacheStats(t *testing.T) {
+func TestPolicyService_GetCacheStats(t *testing.T) {
 	service := &PolicyService{
 		cache: NewPolicyCache(5 * time.Minute),
 	}
@@ -203,4 +203,4 @@ func TestEnforcePolicy_WithoutOPA(t *testing.T) {
 	if !strings.Contains(err.Error(), "policy query failed") {
 		t.Errorf("Expected error to contain 'policy query failed', got %v", err)
 	}
-} 
+}

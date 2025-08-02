@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -29,13 +30,13 @@ type MerkleNode struct {
 
 // MerkleProof represents a Merkle proof for verification
 type MerkleProof struct {
-	RootHash    string   `json:"root_hash"`
-	LeafHash    string   `json:"leaf_hash"`
-	ProofPath   []string `json:"proof_path"`
-	ProofIndex  []int    `json:"proof_index"`
-	TreeHeight  int      `json:"tree_height"`
-	LeafCount   int      `json:"leaf_count"`
-	Timestamp   string   `json:"timestamp"`
+	RootHash   string   `json:"root_hash"`
+	LeafHash   string   `json:"leaf_hash"`
+	ProofPath  []string `json:"proof_path"`
+	ProofIndex []int    `json:"proof_index"`
+	TreeHeight int      `json:"tree_height"`
+	LeafCount  int      `json:"leaf_count"`
+	Timestamp  string   `json:"timestamp"`
 }
 
 // HashChain represents a hash chain for audit trail
@@ -107,7 +108,7 @@ func (s *CryptographicIntegrityService) buildTreeFromLeaves(nodes []*MerkleNode)
 	for i := 0; i < len(nodes); i += 2 {
 		left := nodes[i]
 		var right *MerkleNode
-		
+
 		if i+1 < len(nodes) {
 			right = nodes[i+1]
 		} else {
@@ -209,7 +210,7 @@ func (s *CryptographicIntegrityService) calculateTreeHeight(leafCount int) int {
 	if leafCount == 0 {
 		return 0
 	}
-	
+
 	height := 0
 	for leafCount > 1 {
 		leafCount = (leafCount + 1) / 2
@@ -264,7 +265,7 @@ func (s *CryptographicIntegrityService) VerifyHashChain(chain *HashChain) bool {
 	}
 
 	// Recreate the current hash
-	entryData := fmt.Sprintf("%s:%s:%d:%s", 
+	entryData := fmt.Sprintf("%s:%s:%d:%s",
 		chain.PreviousHash, chain.EntryID, chain.Sequence, chain.Timestamp)
 	expectedHash := s.GenerateHash(entryData)
 
@@ -376,4 +377,4 @@ func (s *CryptographicIntegrityService) HealthCheck(ctx context.Context) error {
 	}
 
 	return nil
-} 
+}

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -118,10 +119,10 @@ func TestAPIGateway_SecurityHeaders(t *testing.T) {
 
 	// Check security headers are present
 	expectedHeaders := map[string]string{
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options":        "DENY",
-		"X-XSS-Protection":       "1; mode=block",
-		"Content-Security-Policy": "default-src 'self'",
+		"X-Content-Type-Options":    "nosniff",
+		"X-Frame-Options":           "DENY",
+		"X-XSS-Protection":          "1; mode=block",
+		"Content-Security-Policy":   "default-src 'self'",
 		"Strict-Transport-Security": "max-age=31536000; includeSubDomains",
 	}
 
@@ -150,10 +151,10 @@ func TestAPIGateway_CORSHeaders(t *testing.T) {
 
 	// Check CORS headers are present
 	expectedHeaders := map[string]string{
-		"Access-Control-Allow-Origin": "*",
+		"Access-Control-Allow-Origin":  "*",
 		"Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 		"Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-ID",
-		"Access-Control-Max-Age": "86400",
+		"Access-Control-Max-Age":       "86400",
 	}
 
 	for header, expectedValue := range expectedHeaders {
@@ -197,9 +198,9 @@ func TestAPIGateway_Shutdown(t *testing.T) {
 	server := NewAPIGateway(cfg)
 
 	// Test graceful shutdown
-	ctx := &http.Request{}.Context()
+	ctx := context.Background()
 	err := server.Shutdown(ctx)
 	if err != nil {
 		t.Errorf("Expected no error on shutdown, got %v", err)
 	}
-} 
+}
