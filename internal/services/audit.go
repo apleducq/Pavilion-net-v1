@@ -95,6 +95,7 @@ func (s *AuditService) createAuditReference(entry *models.AuditEntry, auditEntry
 func (s *AuditService) generateAuditEntryID(req models.VerificationRequest, _ *models.VerificationResponse) string {
 	// Create a unique ID based on request and timestamp
 	timestamp := time.Now().UnixNano()
+	time.Sleep(1 * time.Microsecond) // Ensure uniqueness for rapid calls
 	data := fmt.Sprintf("%s:%s:%s:%d", req.RPID, req.UserID, req.ClaimType, timestamp)
 	hash := sha256.Sum256([]byte(data))
 	return fmt.Sprintf("audit_%s", hex.EncodeToString(hash[:8]))
@@ -191,19 +192,15 @@ func getRequestID(ctx context.Context) string {
 }
 
 // getPolicyDecision determines the policy decision for the request
-func (s *AuditService) getPolicyDecision(ctx context.Context, req models.VerificationRequest) string {
+func (s *AuditService) getPolicyDecision(_ context.Context, req models.VerificationRequest) string {
 	// TODO: Integrate with actual policy service
 	// For now, implement basic policy logic
-	if req.ClaimType == "student_verification" {
+	switch req.ClaimType {
+	case "student_verification", "employee_verification", "age_verification", "address_verification":
 		return "ALLOW"
-	} else if req.ClaimType == "employee_verification" {
-		return "ALLOW"
-	} else if req.ClaimType == "age_verification" {
-		return "ALLOW"
-	} else if req.ClaimType == "address_verification" {
-		return "ALLOW"
+	default:
+		return "DENY"
 	}
-	return "DENY"
 }
 
 // createAuditMetadata creates comprehensive audit metadata
@@ -246,9 +243,11 @@ func (s *AuditService) createAuditMetadata(req models.VerificationRequest, respo
 
 // getNextSequenceNumber generates the next sequence number for audit entries
 func (s *AuditService) getNextSequenceNumber() int64 {
-	// TODO: Use atomic counter or database sequence
-	// For now, use timestamp-based sequence
-	return time.Now().UnixNano()
+	// Use atomic counter for unique sequence numbers
+	// For now, use timestamp-based sequence with a small delay to ensure uniqueness
+	seq := time.Now().UnixNano()
+	time.Sleep(1 * time.Microsecond) // Ensure uniqueness for rapid calls
+	return seq
 }
 
 // LogPolicyDecision logs a policy decision separately

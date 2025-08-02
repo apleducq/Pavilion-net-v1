@@ -139,9 +139,17 @@ func NewDPConnectorService(cfg *config.Config) *DPConnectorService {
 
 	// Create connection pool
 	pool := &ConnectionPool{
-		clients:  make(map[string]*http.Client),
-		maxIdle:  100,
-		idleTime: 90 * time.Second,
+		clients:      make(map[string]*http.Client),
+		maxIdle:      100,
+		idleTime:     90 * time.Second,
+		healthChecks: make(map[string]*HealthCheck),
+		timeoutConfig: &TimeoutConfig{
+			ConnectTimeout:   30 * time.Second,
+			ReadTimeout:      30 * time.Second,
+			WriteTimeout:     30 * time.Second,
+			IdleTimeout:      90 * time.Second,
+			KeepAliveTimeout: 30 * time.Second,
+		},
 	}
 
 	// Create circuit breaker
@@ -166,10 +174,17 @@ func NewDPConnectorService(cfg *config.Config) *DPConnectorService {
 		},
 	}
 
-	// Create authenticator with default configuration
-	authConfig := &AuthenticationConfig{
-		APIKey:     cfg.DPConnectorToken,
-		AuthMethod: AuthMethodAPIKey,
+	// Create authenticator with appropriate configuration
+	var authConfig *AuthenticationConfig
+	if cfg.DPConnectorToken != "" {
+		authConfig = &AuthenticationConfig{
+			APIKey:     cfg.DPConnectorToken,
+			AuthMethod: AuthMethodAPIKey,
+		}
+	} else {
+		authConfig = &AuthenticationConfig{
+			AuthMethod: AuthMethodNone,
+		}
 	}
 	authenticator := NewAuthenticator(authConfig)
 
@@ -600,19 +615,13 @@ func (s *DPConnectorService) GetDPStats() map[string]interface{} {
 	}
 
 	// Add circuit breaker stats
-	for key, value := range s.circuitBreaker.GetCircuitBreakerStats() {
-		stats["circuit_breaker_"+key] = value
-	}
+	stats["circuit_breaker"] = s.circuitBreaker.GetCircuitBreakerStats()
 
 	// Add connection pool stats
-	for key, value := range s.pool.GetConnectionPoolStats() {
-		stats["pool_"+key] = value
-	}
+	stats["connection_pool"] = s.pool.GetConnectionPoolStats()
 
 	// Add retry stats
-	for key, value := range s.GetRetryStats() {
-		stats["retry_"+key] = value
-	}
+	stats["retry_stats"] = s.GetRetryStats()
 
 	return stats
 }

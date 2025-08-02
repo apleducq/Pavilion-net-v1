@@ -942,9 +942,9 @@ func TestDPConnectorService_AuthenticationIntegration(t *testing.T) {
 			t.Fatal("Expected authenticator to be initialized")
 		}
 
-		// Test that the authenticator defaults to API key method
-		if service.authenticator.config.AuthMethod != AuthMethodAPIKey {
-			t.Errorf("Expected AuthMethodAPIKey, got %s", service.authenticator.config.AuthMethod)
+		// Test that the authenticator defaults to no authentication method
+		if service.authenticator.config.AuthMethod != AuthMethodNone {
+			t.Errorf("Expected AuthMethodNone, got %s", service.authenticator.config.AuthMethod)
 		}
 	})
 }
